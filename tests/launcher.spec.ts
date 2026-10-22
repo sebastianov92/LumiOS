@@ -826,10 +826,6 @@ for (const width of [1920, 390]) {
       'animation-name',
       'flow-drift',
     );
-    await expect(page.locator('.wallpaper .flow-spot').nth(2)).toHaveCSS(
-      'animation-duration',
-      '16s',
-    );
   });
 
   test(`Up follows background columns and Back returns to its category at ${width}px`, async ({
@@ -2074,10 +2070,4 @@ test('the live Flow background stops drifting under reduced motion', async ({ pa
   await expect(spots.first()).toHaveCSS('animation-name', 'none');
   await expect(page.locator('.wallpaper')).toHaveCSS('background-color', 'rgb(76, 95, 213)');
   await expect(page.locator('.wallpaper')).toHaveCSS('overflow', 'hidden');
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Background', exact: true }).click();
-  const thumbnail = page.locator('[data-focusable="wallpaper-flow"] .wallpaper-thumbnail');
-  await expect(thumbnail).toHaveClass(/wallpaper-live/);
-  await expect(thumbnail.locator('.flow-spot')).toHaveCount(4);
-  await expect(thumbnail).toHaveCSS('background-color', 'rgb(76, 95, 213)');
 });

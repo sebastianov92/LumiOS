@@ -67,7 +67,7 @@ Los packs viven en `/media/developer/lumios/packs/` de la TV. Tres formas de lle
 
 Los packs también pueden traer **fondos** para Ajustes → Fondo: `wallpapers/<slug>/image.jpg` (o png/webp) o `wallpapers/<slug>/style.css` con el selector raíz `.wallpaper`, por ejemplo gradientes. Ejemplo CSS sin imágenes en [packs/gradients](packs/gradients) (`pnpm icnl pack packs/gradients`).
 
-El fondo de serie **Flow** es animado: cuatro manchas de color, cada una con su dirección y ritmo, en capas compuestas por GPU; la miniatura de Ajustes → Fondo también se mueve. Con **Reducir movimiento** (o la preferencia del sistema) se queda estático. El «Flow CSS» del pack `gradients` es la versión estática. Los fondos CSS de los packs son estáticos: el filtro de seguridad descarta `@keyframes`.
+El fondo de serie **Flow** es animado: cuatro manchas de color que derivan lentamente en capas compuestas por GPU; con **Reducir movimiento** (o la preferencia del sistema) se queda estático. Los fondos CSS de los packs son estáticos: el filtro de seguridad descarta `@keyframes`.
 
 ## Opcional: abrir al arrancar y mantener en memoria
 

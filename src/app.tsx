@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import {
   ArrowRight,
   CircleAlert,
@@ -13,7 +13,6 @@ import {
   X,
 } from 'lucide-react';
 import { AppTile } from './components/app-tile';
-import { LiveSpots } from './components/live-wallpaper';
 import { InputCard } from './components/input-card';
 import { Settings } from './components/settings';
 import { AppOptions } from './components/app-options';
@@ -527,10 +526,7 @@ function Launcher({
     />
   );
   const packWallpaper = findWallpaper(packs.packs, preferences.wallpaper);
-  const wallpaper =
-    wallpapers.find((item) => item.id === preferences.wallpaper) ??
-    wallpapers.find((item) => item.id === 'dunes') ??
-    wallpapers[0];
+  const wallpaper = wallpapers.find((item) => item.id === preferences.wallpaper) ?? wallpapers[0];
   const pageEntryFocus: Record<Page, string> = {
     home: favorites[0]
       ? `favorite-${favorites[0].id}`
@@ -559,7 +555,21 @@ function Launcher({
               : { backgroundImage: `url('./wallpapers/${wallpaper.image}')` }
         }
       >
-        {!packWallpaper && wallpaper.spots ? <LiveSpots spots={wallpaper.spots} /> : null}
+        {!packWallpaper && wallpaper.spots
+          ? wallpaper.spots.map((spot, index) => (
+              <span
+                key={index}
+                className="flow-spot"
+                style={
+                  {
+                    left: `${spot.x}%`,
+                    top: `${spot.y}%`,
+                    '--spot': spot.color,
+                  } as CSSProperties
+                }
+              />
+            ))
+          : null}
       </div>
       <div className="wallpaper-shade" />
       <div className="shell">
