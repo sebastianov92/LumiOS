@@ -19,7 +19,7 @@ Build before running browser tests so packaged `file://` tests exercise the curr
 
 ## Structure
 
-`src/` contains React/TypeScript UI, spatial navigation, local preferences, and the webOS bridge. `public/` contains locally bundled assets. `tools/` builds a classic-script app and IPK. `tv/autostart.sh` is the optional boot hook.
+`src/` contains React/TypeScript UI, spatial navigation, local preferences, and the webOS bridge. `src/dev-packs.ts` loads the example packs listed in `packs/dev.json` into the desktop preview when the URL carries `?packs` (stylesheets are fetched with `?direct` so Vite serves CSS, not a module); it never runs on the TV. `public/` contains locally bundled assets. `tools/` builds a classic-script app and IPK. `tv/autostart.sh` is the optional boot hook.
 
 Project filenames use lowercase kebab-case, including React components (for example, `app-tile.tsx`). Keep `package.json` and `appinfo.json` versions synchronized; change the version only when requested.
 

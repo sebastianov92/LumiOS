@@ -195,6 +195,8 @@ const messages = {
     systemPreloadError: 'Couldn’t change system preload. {error}',
     systemPreloadWorking: 'Updating system preload…',
     tvOnlyHint: 'Available on the TV.',
+    devPacksHint:
+      'Desktop preview: add ?packs to the URL to load the example packs from the repository.',
     builtinIcons: 'Built-in symbols',
     iconHdmi: 'HDMI',
     iconConsole: 'Console',
@@ -404,6 +406,8 @@ const messages = {
     systemPreloadError: 'System-Vorladen konnte nicht geändert werden. {error}',
     systemPreloadWorking: 'System-Vorladen wird aktualisiert…',
     tvOnlyHint: 'Nur auf dem Fernseher verfügbar.',
+    devPacksHint:
+      'Desktop-Vorschau: ?packs an die URL anhängen, um die Beispielpakete aus dem Repository zu laden.',
     builtinIcons: 'Integrierte Symbole',
     iconHdmi: 'HDMI',
     iconConsole: 'Konsole',
@@ -608,6 +612,7 @@ const messages = {
     systemPreloadError: '无法更改系统预加载。{error}',
     systemPreloadWorking: '正在更新系统预加载…',
     tvOnlyHint: '仅在电视上可用。',
+    devPacksHint: '桌面预览：在网址后加上 ?packs 可加载仓库中的示例包。',
     builtinIcons: '内置符号',
     iconHdmi: 'HDMI',
     iconConsole: '游戏机',
@@ -816,6 +821,8 @@ const messages = {
     systemPreloadError: 'No se pudo cambiar la precarga del sistema. {error}',
     systemPreloadWorking: 'Actualizando la precarga del sistema…',
     tvOnlyHint: 'Disponible en la TV.',
+    devPacksHint:
+      'Vista previa de escritorio: añade ?packs a la URL para cargar los packs de ejemplo del repositorio.',
     builtinIcons: 'Símbolos integrados',
     iconHdmi: 'HDMI',
     iconConsole: 'Consola',

@@ -140,7 +140,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Abre **http://127.0.0.1:5188**. La vista previa usa apps y entradas de ejemplo; las acciones de TV muestran un mensaje. En la TV, LumiOS carga el inventario real.
+Abre **http://127.0.0.1:5188**. La vista previa usa apps y entradas de ejemplo; las acciones de TV muestran un mensaje. En la TV, LumiOS carga el inventario real. Con **http://127.0.0.1:5188/?packs** la vista previa carga además los packs de ejemplo del repo (`packs/dev.json`): iconos de `luma-brands` y fondos de `gradients`, para probar packs propios antes de subirlos a la TV.
 
 Checks, estructura del código y convenciones: [agents.md](agents.md).
 

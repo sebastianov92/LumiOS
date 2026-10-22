@@ -2022,3 +2022,24 @@ test('pack wallpapers join Settings → Background as gradients or images and pe
     await page.evaluate(() => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).wallpaper),
   ).toBe('mock/dot');
 });
+
+test('the desktop preview loads the example packs when the URL carries ?packs', async ({
+  page,
+}) => {
+  await page.goto('/?packs');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Background', exact: true }).click();
+  const flow = page.locator('[data-focusable="wallpaper-gradients/flow"]');
+  await expect(flow).toContainText('Flow');
+  await flow.click();
+  await expect(page.locator('.wallpaper')).toHaveCSS('background-color', 'rgb(76, 95, 213)');
+  await page.getByRole('button', { name: 'Icons', exact: true }).click();
+  await expect(page.locator('[data-focusable="setting-pack-luma-brands"]')).toContainText(
+    '9 icons',
+  );
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('.app-tile[data-app-id="netflix"] .app-face').first()).toHaveAttribute(
+    'data-icnl',
+    'luma-brands/netflix',
+  );
+});

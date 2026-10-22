@@ -11,6 +11,7 @@ import {
 import { iconRef, type IconKind } from '../icnl';
 import { PACKS_DIR, type StoredPack } from '../packs';
 import { useTranslation, type MessageKey } from '../i18n';
+import { isTV } from '../bridge';
 import { BUILTIN_PREFIX, builtinIconNames } from '../inputs';
 import { BuiltinSymbol } from './connection-icon';
 import type { BuiltinIconName, ResolvedIcon, TVApp } from '../types';
@@ -132,7 +133,9 @@ export function IconSettings({
         </div>
       ) : (
         <p className="settings-description" role="status">
-          {loading ? t('packsLoading') : `${t('noPacks')} ${t('packsHint', { folder: PACKS_DIR })}`}
+          {loading
+            ? t('packsLoading')
+            : `${t('noPacks')} ${t('packsHint', { folder: PACKS_DIR })}${isTV() ? '' : ` ${t('devPacksHint')}`}`}
         </p>
       )}
       <div className="settings-group">

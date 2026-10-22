@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isTV } from './bridge';
 import { iconRef, scopeIconCss, wallpaperRef } from './icnl';
 import { importPacksFromUsb, removePackFile, syncPacks, type StoredPack } from './packs';
+import { devPacksEnabled, loadDevPacks } from './dev-packs';
 
 export interface PackLibrary {
   packs: StoredPack[];
@@ -29,10 +30,16 @@ export function usePacks(): PackLibrary {
 
   const reload = useCallback(() => {
     if (busy.current) return busy.current;
-    // Desktop previews have no pack folder to read; stay idle instead of touching state.
-    if (!isTV()) return Promise.resolve([] as StoredPack[]);
+    // Desktop previews have no pack folder; with ?packs they load the repository's examples.
+    if (!isTV() && !devPacksEnabled()) return Promise.resolve([] as StoredPack[]);
     setLoading(true);
-    const run = syncPacks(signal.current)
+    const run = (
+      isTV()
+        ? syncPacks(signal.current)
+        : loadDevPacks().then((packs) =>
+            packs.map((pack) => ({ ...pack, path: `/packs/${pack.id}`, hash: 'dev', size: 0 })),
+          )
+    )
       .catch(() => [] as StoredPack[])
       .then((next) => {
         // Keep the same array when nothing changed so dependent memos and tiles stay put.
