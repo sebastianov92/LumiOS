@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import {
   ArrowRight,
   CircleAlert,
@@ -541,7 +541,7 @@ function Launcher({
     <div className={`lumios${reducedMotion ? ' reduce-motion' : ''}`}>
       <div className="landscape-fallback" />
       <div
-        className={`wallpaper ${packWallpaper ? 'wallpaper-pack' : `wallpaper-${wallpaper.id}`}`}
+        className={`wallpaper ${packWallpaper ? 'wallpaper-pack' : `wallpaper-${wallpaper.id}`}${!packWallpaper && wallpaper.spots ? ' wallpaper-live' : ''}`}
         data-wallpaper={packWallpaper ? preferences.wallpaper : undefined}
         style={
           packWallpaper
@@ -550,9 +550,27 @@ function Launcher({
                   backgroundImage: `url('${packs.wallpaperUrls.get(preferences.wallpaper) ?? ''}')`,
                 }
               : undefined
-            : { backgroundImage: `url('./wallpapers/${wallpaper.image}')` }
+            : wallpaper.spots
+              ? { background: wallpaper.base }
+              : { backgroundImage: `url('./wallpapers/${wallpaper.image}')` }
         }
-      />
+      >
+        {!packWallpaper && wallpaper.spots
+          ? wallpaper.spots.map((spot, index) => (
+              <span
+                key={index}
+                className="flow-spot"
+                style={
+                  {
+                    left: `${spot.x}%`,
+                    top: `${spot.y}%`,
+                    '--spot': spot.color,
+                  } as CSSProperties
+                }
+              />
+            ))
+          : null}
+      </div>
       <div className="wallpaper-shade" />
       <div className="shell">
         <header className="header" data-focus-down={pageEntryFocus[page]}>
