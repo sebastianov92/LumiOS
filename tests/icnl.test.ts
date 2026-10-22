@@ -208,18 +208,18 @@ test('USB packs are copied under shell-safe names', () => {
   );
 });
 
-test('packs can carry wallpapers as images or stylesheets, and preferences may point at them', () => {
+test('packs can carry image wallpapers, and preferences may point at them', () => {
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]);
   const pack = parsePack('walls', {
     'pack.json': encode(
       JSON.stringify({
         format: 'icnl/1',
         name: 'Walls',
-        wallpapers: { flow: { title: 'Flow' }, dot: {}, missing: { title: 'Missing' } },
+        wallpapers: { dot: {}, text: { title: 'Text only' } },
       }),
     ),
-    'wallpapers/flow/style.css': encode('.wallpaper { background: red; } .wallpaper img { x: 1 }'),
     'wallpapers/dot/image.png': png,
+    'wallpapers/text/style.css': encode('.wallpaper { background: red; }'),
   });
   assert.equal(pack.icons.length, 0);
   assert.deepEqual(
@@ -228,19 +228,11 @@ test('packs can carry wallpapers as images or stylesheets, and preferences may p
       wallpaper.meta.title,
       wallpaper.type,
       wallpaper.data.byteLength,
-      !!wallpaper.css,
     ]),
-    [
-      ['flow', 'Flow', '', 0, true],
-      ['dot', 'dot', 'image/png', png.length, false],
-    ],
-  );
-  assert.equal(
-    scopeIconCss(pack.wallpapers[0].css, '.wallpaper[data-wallpaper="walls/flow"]', '.wallpaper'),
-    '.wallpaper[data-wallpaper="walls/flow"] { background: red; }\n.wallpaper[data-wallpaper="walls/flow"] img { x: 1; }',
+    [['dot', 'dot', 'image/png', png.length]],
   );
   assert.equal(findWallpaper([pack], 'walls/dot')?.wallpaper.type, 'image/png');
-  assert.equal(findWallpaper([pack], 'walls/nope'), undefined);
+  assert.equal(findWallpaper([pack], 'walls/text'), undefined);
   assert.throws(
     () =>
       parsePack(
@@ -259,8 +251,8 @@ test('packs can carry wallpapers as images or stylesheets, and preferences may p
     /lists no icons or wallpapers/,
   );
   assert.equal(
-    parsePreferences(JSON.stringify({ version: 1, wallpaper: 'walls/flow' })).wallpaper,
-    'walls/flow',
+    parsePreferences(JSON.stringify({ version: 1, wallpaper: 'walls/dot' })).wallpaper,
+    'walls/dot',
   );
   assert.equal(
     parsePreferences(JSON.stringify({ version: 1, wallpaper: 'nope' })).wallpaper,

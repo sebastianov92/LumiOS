@@ -545,11 +545,7 @@ function Launcher({
         data-wallpaper={packWallpaper ? preferences.wallpaper : undefined}
         style={
           packWallpaper
-            ? packWallpaper.wallpaper.type
-              ? {
-                  backgroundImage: `url('${packs.wallpaperUrls.get(preferences.wallpaper) ?? ''}')`,
-                }
-              : undefined
+            ? { backgroundImage: `url('${packs.wallpaperUrls.get(preferences.wallpaper) ?? ''}')` }
             : { backgroundImage: `url('./wallpapers/${wallpaper.image}')` }
         }
       />

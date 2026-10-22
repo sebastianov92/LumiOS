@@ -172,7 +172,6 @@ export function Settings({
       id: wallpaper.id as string,
       title: wallpaper.title,
       image: wallpaperThumbnail(wallpaper.image),
-      css: false,
     })),
     ...packs.packs.flatMap((pack) =>
       pack.wallpapers.map((wallpaper) => {
@@ -180,8 +179,7 @@ export function Settings({
         return {
           id: ref,
           title: wallpaper.meta.title,
-          image: wallpaper.type ? (packs.wallpaperUrls.get(ref) ?? '') : '',
-          css: !wallpaper.type,
+          image: packs.wallpaperUrls.get(ref) ?? '',
         };
       }),
     ),
@@ -419,10 +417,7 @@ export function Settings({
                     aria-pressed={preferences.wallpaper === option.id}
                     onClick={() => onUpdate({ wallpaper: option.id })}
                   >
-                    <span
-                      className="wallpaper-thumbnail"
-                      data-wallpaper={option.css ? option.id : undefined}
-                    >
+                    <span className="wallpaper-thumbnail">
                       {option.image ? (
                         <img src={option.image} alt="" draggable={false} decoding="async" />
                       ) : null}

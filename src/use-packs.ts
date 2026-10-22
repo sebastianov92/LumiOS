@@ -107,18 +107,6 @@ export function usePacks(): PackLibrary {
               scopeIconCss(icon.css, `${root}[data-icnl="${iconRef(pack.id, icon.meta.slug)}"]`),
             ),
           ),
-        // CSS wallpapers paint the Home background and their Settings thumbnail.
-        ...pack.wallpapers
-          .filter((wallpaper) => wallpaper.css)
-          .flatMap((wallpaper) =>
-            ['.wallpaper', '.wallpaper-thumbnail'].map((root) =>
-              scopeIconCss(
-                wallpaper.css,
-                `${root}[data-wallpaper="${wallpaperRef(pack.id, wallpaper.meta.slug)}"]`,
-                '.wallpaper',
-              ),
-            ),
-          ),
       ])
       .join('\n');
     if (style.textContent !== css) style.textContent = css;

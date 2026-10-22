@@ -14,6 +14,17 @@ Launcher moderno, pensado para el control remoto, para TVs LG con webOS rooteado
 
 Requiere TV rooteada con [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (**Settings → Root status: ok**).
 
+### Desde Homebrew Channel (recomendado)
+
+1. Homebrew Channel → **Settings → Add repository** y pega esta URL:
+
+   ```text
+   https://github.com/sebastianov92/LumiOS/releases/latest/download/repo.json
+   ```
+
+2. Vuelve a la lista de apps, elige **LumiOS** e **Install**.
+3. Abre **LumiOS** desde las apps de la TV. Tras cada actualización ciérrala del todo y vuelve a abrirla.
+
 ### Manual por SSH
 
 Genera el paquete y cópialo a la TV (reemplaza `TV_IP`):
@@ -65,7 +76,7 @@ Los packs viven en `/media/developer/lumios/packs/` de la TV. Tres formas de lle
 
 `pnpm icnl from-tv --device tv` genera un pack con los iconos propios de la TV. En **Ajustes → Iconos** se ven los packs instalados, se releen y se elige el icono de cada app (automático, icono de la TV o cualquier icono de un pack).
 
-Los packs también pueden traer **fondos** para Ajustes → Fondo: `wallpapers/<slug>/image.jpg` (o png/webp) o `wallpapers/<slug>/style.css` con el selector raíz `.wallpaper`, por ejemplo gradientes. Ejemplo CSS sin imágenes en [packs/gradients](packs/gradients) (`pnpm icnl pack packs/gradients`).
+Los packs también pueden traer **fondos** para Ajustes → Fondo: una imagen por fondo en `wallpapers/<slug>/image.jpg` (o png/webp, hasta 8 MB), declarada en `pack.json` bajo `wallpapers`.
 
 ## Opcional: abrir al arrancar y mantener en memoria
 

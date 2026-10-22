@@ -35,7 +35,7 @@ Prueba en TV: inventario con 40+ apps carga iconos en < 2 s en frío y 0 s en ca
 
 ## F2 — Formato `.icnl` + módulo de iconos — HECHA 2026-10-22 (pendiente de prueba en TV)
 
-Implementado: `src/icnl.ts` (formato, CSS scoped, resolución), `src/packs.ts` (listado md5, lectura por trozos `dd`, unzip fflate, caché, USB), `src/use-packs.ts`, Ajustes → Iconos (`icon-settings.tsx`), `tools/icnl.mjs` (`pack`, `inspect`, `push`, `from-tv`), pack de ejemplo `packs/luma-brands`. Verificado en escritorio con un pack simulado en el mock de TV de Playwright. Ampliado: fondos en packs (`wallpapers/<slug>/image.*` o `style.css` raíz `.wallpaper`), elegibles en Ajustes → Fondo; pack ejemplo `packs/gradients` (Flow, Ember, Ocean).
+Implementado: `src/icnl.ts` (formato, CSS scoped, resolución), `src/packs.ts` (listado md5, lectura por trozos `dd`, unzip fflate, caché, USB), `src/use-packs.ts`, Ajustes → Iconos (`icon-settings.tsx`), `tools/icnl.mjs` (`pack`, `inspect`, `push`, `from-tv`), pack de ejemplo `packs/luma-brands`. Verificado en escritorio con un pack simulado en el mock de TV de Playwright. Ampliado: fondos de imagen en packs (`wallpapers/<slug>/image.*`), elegibles en Ajustes → Fondo. Los fondos CSS se probaron y se quitaron (2026-10-22) para no complicar; el Flow pedido quedó como SVG de serie.
 
 ### Formato
 

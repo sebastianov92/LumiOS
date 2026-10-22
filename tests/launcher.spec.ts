@@ -970,7 +970,7 @@ function mockPack(): MockPack {
           netflix: { title: 'Netflix tile', apps: ['netflix'] },
           switch: { title: 'Switch glyph', kind: 'glyph', inputs: ['com.webos.app.hdmi2'] },
         },
-        wallpapers: { flow: { title: 'Flow' }, dot: { title: 'Dot' } },
+        wallpapers: { dot: { title: 'Dot' } },
       }),
     ),
     'icons/netflix/icon.svg': Buffer.from(
@@ -979,9 +979,6 @@ function mockPack(): MockPack {
     'icons/netflix/style.css': Buffer.from('.icon { background: rgb(20, 20, 20); }'),
     'icons/switch/icon.svg': Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>',
-    ),
-    'wallpapers/flow/style.css': Buffer.from(
-      '.wallpaper { background-color: #4c5fd5; background-image: radial-gradient(at 20% 26%, #f3d3e4 0px, transparent 62%); }',
     ),
     'wallpapers/dot/image.png': Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
@@ -2000,27 +1997,16 @@ test('a launcher can be shown as an app tile instead of an input card', async ({
   await expect(tile).toBeVisible();
 });
 
-test('pack wallpapers join Settings → Background as gradients or images and persist', async ({
-  page,
-}) => {
+test('pack wallpapers join Settings → Background as images and persist', async ({ page }) => {
   await installMockTV(page, false, undefined, undefined, [mockPack()]);
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Background', exact: true }).click();
-  const flow = page.locator('[data-focusable="wallpaper-mock/flow"]');
-  await expect(flow).toContainText('Flow');
-  await expect(flow.locator('.wallpaper-thumbnail')).toHaveCSS(
-    'background-color',
-    'rgb(76, 95, 213)',
-  );
-  await flow.click();
-  const wall = page.locator('.wallpaper');
-  await expect(wall).toHaveAttribute('data-wallpaper', 'mock/flow');
-  await expect(wall).toHaveCSS('background-color', 'rgb(76, 95, 213)');
-  await expect(wall).toHaveCSS('background-image', /radial-gradient/);
   const dot = page.locator('[data-focusable="wallpaper-mock/dot"]');
+  await expect(dot).toContainText('Dot');
   await expect(dot.locator('img')).toHaveAttribute('src', /^blob:/);
   await dot.click();
+  const wall = page.locator('.wallpaper');
   await expect(wall).toHaveAttribute('data-wallpaper', 'mock/dot');
   await expect(wall).toHaveCSS('background-image', /blob:/);
   await page.reload();
@@ -2036,11 +2022,6 @@ test('the desktop preview loads the example packs when the URL carries ?packs', 
 }) => {
   await page.goto('/?packs');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Background', exact: true }).click();
-  const flow = page.locator('[data-focusable="wallpaper-gradients/flow"]');
-  await expect(flow).toContainText('Flow');
-  await flow.click();
-  await expect(page.locator('.wallpaper')).toHaveCSS('background-color', 'rgb(76, 95, 213)');
   await page.getByRole('button', { name: 'Icons', exact: true }).click();
   await expect(page.locator('[data-focusable="setting-pack-luma-brands"]')).toContainText(
     '9 icons',

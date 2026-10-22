@@ -50,14 +50,11 @@ export interface PackManifest {
   wallpapers: PackWallpaperMeta[];
 }
 
-// A Home background: an image, or a stylesheet whose root selector `.wallpaper` paints it
-// (gradients and the like). Both show in Settings → Background.
+// A Home background image shipped in a pack; it shows in Settings → Background.
 export interface PackWallpaper {
   meta: PackWallpaperMeta;
-  // Image MIME type, or empty for a CSS-only wallpaper.
   type: string;
   data: ArrayBuffer;
-  css: string;
 }
 
 export interface PackIcon {
@@ -306,26 +303,18 @@ export function parsePack(
         data: file(`wallpapers/${meta.slug}/image.${extension}`),
       }))
       .find((candidate) => candidate.data && candidate.data.length);
-    const styles = file(`wallpapers/${meta.slug}/style.css`);
-    if (!image && !(styles && styles.length)) {
+    if (!image) {
       if (options.strict)
-        throw new Error(
-          `Wallpaper "${meta.slug}" has no wallpapers/${meta.slug}/image.* or style.css file.`,
-        );
+        throw new Error(`Wallpaper "${meta.slug}" has no wallpapers/${meta.slug}/image.* file.`);
       continue;
     }
-    if (image && image.data!.length > MAX_WALLPAPER_BYTES) {
+    if (image.data!.length > MAX_WALLPAPER_BYTES) {
       if (options.strict) throw new Error(`Wallpaper "${meta.slug}" is larger than 8 MiB.`);
       continue;
     }
-    const data = new ArrayBuffer(image ? image.data!.byteLength : 0);
-    if (image) new Uint8Array(data).set(image.data!);
-    wallpapers.push({
-      meta,
-      type: image?.type ?? '',
-      data,
-      css: styles ? decoder.decode(styles).slice(0, MAX_ICON_CSS) : '',
-    });
+    const data = new ArrayBuffer(image.data!.byteLength);
+    new Uint8Array(data).set(image.data!);
+    wallpapers.push({ meta, type: image.type, data });
   }
   if (!icons.length && !wallpapers.length)
     throw new Error('The pack has no icon or wallpaper files.');
