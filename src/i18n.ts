@@ -125,6 +125,7 @@ const messages = {
     forest: 'Forest',
     yosemite: 'Yosemite',
     northernLights: 'Northern lights',
+    flow: 'Flow',
     liveTV: 'Live TV',
     homebrew: 'Homebrew',
     browser: 'Browser',
@@ -335,6 +336,7 @@ const messages = {
     forest: 'Wald',
     yosemite: 'Yosemite',
     northernLights: 'Nordlichter',
+    flow: 'Flow',
     liveTV: 'Live-TV',
     homebrew: 'Homebrew',
     browser: 'Browser',
@@ -544,6 +546,7 @@ const messages = {
     forest: '森林',
     yosemite: '优胜美地',
     northernLights: '北极光',
+    flow: 'Flow',
     liveTV: '电视直播',
     homebrew: '自制应用商店',
     browser: '浏览器',
@@ -751,6 +754,7 @@ const messages = {
     forest: 'Bosque',
     yosemite: 'Yosemite',
     northernLights: 'Aurora boreal',
+    flow: 'Flow',
     liveTV: 'TV en vivo',
     homebrew: 'Homebrew',
     browser: 'Navegador',
@@ -911,6 +915,7 @@ export function wallpaperLabel(language: Language, id: string, fallback: string)
     forest: 'forest',
     yosemite: 'yosemite',
     'northern-lights': 'northernLights',
+    flow: 'flow',
   };
   const key = keys[id];
   return key ? translate(language, key) : fallback;

@@ -80,6 +80,7 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
     'wallpapers/prism.svg',
     'wallpapers/yosemite.jpg',
     'wallpapers/northern-lights.jpg',
+    'wallpapers/flow.svg',
     'wallpaper-thumbnails/dunes.jpg',
     'wallpaper-thumbnails/san-francisco.jpg',
     'wallpaper-thumbnails/summit.jpg',

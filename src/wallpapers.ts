@@ -53,4 +53,10 @@ export const wallpapers: {
     title: 'Northern lights',
     image: 'northern-lights.jpg',
   },
+  {
+    // Duotone spot gradients (Flow), drawn as SVG so it ships with the app.
+    id: 'flow',
+    title: 'Flow',
+    image: 'flow.svg',
+  },
 ];

@@ -806,14 +806,22 @@ for (const width of [1920, 390]) {
     await expect(page.getByRole('button', { name: 'Background', exact: true })).toBeFocused();
     await page.keyboard.press('ArrowRight');
     await expect(selected).toBeFocused();
-    for (const name of ['San Francisco', 'Summit', 'Forest', 'Yosemite', 'Northern lights']) {
+    for (const name of [
+      'San Francisco',
+      'Summit',
+      'Forest',
+      'Yosemite',
+      'Northern lights',
+      'Flow',
+    ]) {
       await page.keyboard.press('ArrowRight');
       await expect(page.getByRole('button', { name, exact: true })).toBeFocused();
     }
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByRole('button', { name: 'Northern lights', exact: true })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Flow', exact: true })).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.locator('.wallpaper')).toHaveClass(/wallpaper-northern-lights/);
+    await expect(page.locator('.wallpaper')).toHaveClass(/wallpaper-flow/);
+    await expect(page.locator('.wallpaper')).toHaveCSS('background-image', /flow\.svg/);
   });
 
   test(`Up follows background columns and Back returns to its category at ${width}px`, async ({

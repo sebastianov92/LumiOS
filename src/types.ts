@@ -10,7 +10,8 @@ export type Wallpaper =
   | 'forest'
   | 'prism'
   | 'yosemite'
-  | 'northern-lights';
+  | 'northern-lights'
+  | 'flow';
 export type Category = 'Streaming' | 'Music' | 'Gaming' | 'Utilities';
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 export type Language = 'en' | 'de' | 'zh' | 'es';
