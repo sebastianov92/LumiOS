@@ -821,11 +821,7 @@ for (const width of [1920, 390]) {
     await expect(page.getByRole('button', { name: 'Flow', exact: true })).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('.wallpaper')).toHaveClass(/wallpaper-flow/);
-    await expect(page.locator('.wallpaper .flow-spot')).toHaveCount(4);
-    await expect(page.locator('.wallpaper .flow-spot').first()).toHaveCSS(
-      'animation-name',
-      'flow-drift',
-    );
+    await expect(page.locator('.wallpaper')).toHaveCSS('background-image', /flow\.svg/);
   });
 
   test(`Up follows background columns and Back returns to its category at ${width}px`, async ({
@@ -942,7 +938,7 @@ test('the packaged file app loads offline with CSP, local fonts, no module fetch
         }),
       ),
     );
-  expect(backgroundThumbnails).toHaveLength(10);
+  expect(backgroundThumbnails).toHaveLength(9);
   const photos = backgroundThumbnails.filter((image) => image.src.endsWith('.jpg'));
   expect(photos).toHaveLength(6);
   for (const photo of photos) {
@@ -2054,20 +2050,4 @@ test('the desktop preview loads the example packs when the URL carries ?packs', 
     'data-icnl',
     'luma-brands/netflix',
   );
-});
-
-test('the live Flow background stops drifting under reduced motion', async ({ page }) => {
-  await page.addInitScript(() => {
-    if (localStorage.getItem('lumios.preferences.v1')) return;
-    localStorage.setItem(
-      'lumios.preferences.v1',
-      JSON.stringify({ version: 1, wallpaper: 'flow', reducedMotion: true }),
-    );
-  });
-  await page.goto('/');
-  const spots = page.locator('.wallpaper.wallpaper-live .flow-spot');
-  await expect(spots).toHaveCount(4);
-  await expect(spots.first()).toHaveCSS('animation-name', 'none');
-  await expect(page.locator('.wallpaper')).toHaveCSS('background-color', 'rgb(76, 95, 213)');
-  await expect(page.locator('.wallpaper')).toHaveCSS('overflow', 'hidden');
 });
