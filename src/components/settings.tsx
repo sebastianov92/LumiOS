@@ -11,6 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { WeatherSettings } from './weather-settings';
+import { LiveSpots } from './live-wallpaper';
 import {
   InputDetail,
   InputSettings,
@@ -171,8 +172,9 @@ export function Settings({
     ...wallpapers.map((wallpaper) => ({
       id: wallpaper.id as string,
       title: wallpaper.title,
-      image: wallpaperThumbnail(wallpaper.image),
+      image: wallpaper.spots ? '' : wallpaperThumbnail(wallpaper.image),
       css: false,
+      live: wallpaper.spots ? { base: wallpaper.base, spots: wallpaper.spots } : undefined,
     })),
     ...packs.packs.flatMap((pack) =>
       pack.wallpapers.map((wallpaper) => {
@@ -182,6 +184,7 @@ export function Settings({
           title: wallpaper.meta.title,
           image: wallpaper.type ? (packs.wallpaperUrls.get(ref) ?? '') : '',
           css: !wallpaper.type,
+          live: undefined,
         };
       }),
     ),
@@ -420,9 +423,11 @@ export function Settings({
                     onClick={() => onUpdate({ wallpaper: option.id })}
                   >
                     <span
-                      className="wallpaper-thumbnail"
+                      className={`wallpaper-thumbnail${option.live ? ' wallpaper-live' : ''}`}
                       data-wallpaper={option.css ? option.id : undefined}
+                      style={option.live ? { background: option.live.base } : undefined}
                     >
+                      {option.live ? <LiveSpots spots={option.live.spots} /> : null}
                       {option.image ? (
                         <img src={option.image} alt="" draggable={false} decoding="async" />
                       ) : null}

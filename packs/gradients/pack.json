@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "author": "Dezik",
   "wallpapers": {
-    "flow": { "title": "Flow" },
+    "flow": { "title": "Flow CSS" },
     "ember": { "title": "Ember" },
     "ocean": { "title": "Ocean" }
   }
