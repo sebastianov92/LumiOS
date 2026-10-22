@@ -95,9 +95,9 @@ test('temperature units persist, work with the remote, and convert cached readin
 }) => {
   let requests = 0;
   await page.addInitScript((location) => {
-    if (!localStorage.getItem('luma.preferences.v1'))
+    if (!localStorage.getItem('lumios.preferences.v1'))
       localStorage.setItem(
-        'luma.preferences.v1',
+        'lumios.preferences.v1',
         JSON.stringify({ version: 1, weatherLocation: location }),
       );
   }, location);
@@ -151,7 +151,7 @@ test('a configured city with failed weather remains usable and shows an honest f
   await page.addInitScript(
     (location) =>
       localStorage.setItem(
-        'luma.preferences.v1',
+        'lumios.preferences.v1',
         JSON.stringify({ version: 1, weatherLocation: location }),
       ),
     location,
@@ -172,7 +172,7 @@ test('packaged file weather works with the restricted CSP and no geolocation loo
   await page.addInitScript(
     (location) =>
       localStorage.setItem(
-        'luma.preferences.v1',
+        'lumios.preferences.v1',
         JSON.stringify({ version: 1, weatherLocation: location }),
       ),
     location,
@@ -215,7 +215,7 @@ test('weather visibility preserves the city and prevents requests when the widge
   await page.addInitScript(
     (location) =>
       localStorage.setItem(
-        'luma.preferences.v1',
+        'lumios.preferences.v1',
         JSON.stringify({ version: 1, weatherLocation: location, showWeather: false }),
       ),
     location,
@@ -258,12 +258,12 @@ test('Back exits city editing before leaving Settings, including the TV Back key
   const search = page.getByRole('button', { name: 'Search locations', exact: true });
   await field.fill('Berlin');
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('region', { name: 'Luma settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'LumiOS settings', exact: true })).toBeVisible();
   await expect(field).toHaveValue('Berlin');
   await expect(search).toBeFocused();
   await field.focus();
   await field.dispatchEvent('keydown', { key: 'Unidentified', keyCode: 461, bubbles: true });
-  await expect(page.getByRole('region', { name: 'Luma settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'LumiOS settings', exact: true })).toBeVisible();
   await expect(field).toHaveValue('Berlin');
   await expect(search).toBeFocused();
   await page.keyboard.press('Escape');

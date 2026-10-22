@@ -1,6 +1,6 @@
 var fs = require('fs'),
   path = require('path'),
-  out = '/tmp/luma-artwork',
+  out = '/tmp/lumios-artwork',
   map = {},
   seen = {};
 try {

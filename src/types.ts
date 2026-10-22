@@ -1,3 +1,5 @@
+import type { IconKind } from './icnl';
+
 export type Page = 'home' | 'apps' | 'settings';
 export type Wallpaper =
   | 'dunes'
@@ -11,7 +13,7 @@ export type Wallpaper =
   | 'northern-lights';
 export type Category = 'Streaming' | 'Music' | 'Gaming' | 'Utilities';
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
-export type Language = 'en' | 'de' | 'zh';
+export type Language = 'en' | 'de' | 'zh' | 'es';
 export type InputVisibility = 'on' | 'off' | 'auto';
 
 export interface TVApp {
@@ -19,14 +21,46 @@ export interface TVApp {
   title: string;
   category: Category;
   brand: string;
+  // Absolute path of the app's own icon on the TV, when the inventory reports one.
+  iconPath?: string;
 }
+
+export interface TVIcon {
+  url: string;
+  color: string;
+}
+
+// What a tile finally shows: an icon-pack entry (styled by its pack CSS via data-icnl) or the
+// app's own TV icon with a computed background colour.
+export type ResolvedIcon =
+  | { source: 'pack'; url: string; ref: string; kind: IconKind }
+  | { source: 'tv'; url: string; color: string };
 
 export interface TVInput {
   id: string;
   title: string;
   port: string;
   connected: boolean | null;
-  kind: 'console' | 'streamer' | 'computer' | 'hdmi';
+  kind: 'console' | 'streamer' | 'computer' | 'hdmi' | 'launcher';
+  // Launcher cards open this app id instead of the card's own id.
+  target?: string;
+  // True when title comes from the user's own name for the input.
+  named?: boolean;
+}
+
+// A Home card that opens any app on the TV (AirPlay, Screen Share, …).
+export interface Launcher {
+  id: string;
+  title: string;
+  // "pack/slug" icon reference, or empty for the default symbol.
+  icon: string;
+  target: string;
+}
+
+// Any app the TV can launch, including ones hidden from the library.
+export interface AppTarget {
+  id: string;
+  title: string;
 }
 
 export interface Preferences {
@@ -43,6 +77,11 @@ export interface Preferences {
   language: Language;
   weatherLocation: WeatherLocation | null;
   inputVisibility: Record<string, InputVisibility>;
+  // App id → "pack/slug" icon reference, or "tv" to bypass packs for that app.
+  iconOverrides: Record<string, string>;
+  inputNames: Record<string, string>;
+  inputIcons: Record<string, string>;
+  launchers: Launcher[];
 }
 
 export interface WeatherLocation {
@@ -63,6 +102,7 @@ export interface WeatherReading {
 export interface Inventory {
   apps: TVApp[];
   inputs: TVInput[];
+  targets: AppTarget[];
   warnings: string[];
 }
 

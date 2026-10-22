@@ -1,9 +1,20 @@
-import type { Preferences } from './types';
+import type { Language, Preferences } from './types';
 import { parseLocation } from './weather';
 import { wallpapers } from './wallpapers';
-import { parseInputVisibility } from './inputs';
+import { parseInputIcons, parseInputNames, parseInputVisibility, parseLaunchers } from './inputs';
+import { validAppId } from './catalog';
+import { validIconOverride } from './icnl';
 
-export const STORAGE_KEY = 'luma.preferences.v1';
+export const languages: readonly Language[] = ['en', 'de', 'zh', 'es'];
+
+// First run follows the TV's UI language when LumiOS speaks it; English otherwise.
+export function detectLanguage(tag?: string): Language {
+  const source = tag ?? (typeof navigator !== 'undefined' ? navigator.language : '');
+  const code = (typeof source === 'string' ? source : '').toLowerCase().slice(0, 2) as Language;
+  return languages.includes(code) ? code : 'en';
+}
+
+export const STORAGE_KEY = 'lumios.preferences.v1';
 export const defaults: Preferences = {
   version: 1,
   favorites: null,
@@ -15,10 +26,21 @@ export const defaults: Preferences = {
   showHomeAppNames: false,
   showWeather: true,
   temperatureUnit: 'celsius',
-  language: 'en',
+  language: detectLanguage(),
   weatherLocation: null,
   inputVisibility: {},
+  iconOverrides: {},
+  inputNames: {},
+  inputIcons: {},
+  launchers: [],
 };
+
+export function parseIconOverrides(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(([id, ref]) => validAppId(id) && validIconOverride(ref)),
+  );
+}
 
 const ids = (value: unknown): string[] =>
   Array.isArray(value)
@@ -48,9 +70,13 @@ export function parsePreferences(raw: string | null): Preferences {
       showHomeAppNames: value.showHomeAppNames === true,
       showWeather: value.showWeather !== false,
       temperatureUnit: value.temperatureUnit === 'fahrenheit' ? 'fahrenheit' : 'celsius',
-      language: value.language === 'de' || value.language === 'zh' ? value.language : 'en',
+      language: languages.includes(value.language) ? value.language : defaults.language,
       weatherLocation: parseLocation(value.weatherLocation),
       inputVisibility: parseInputVisibility(value.inputVisibility),
+      iconOverrides: parseIconOverrides(value.iconOverrides),
+      inputNames: parseInputNames(value.inputNames),
+      inputIcons: parseInputIcons(value.inputIcons),
+      launchers: parseLaunchers(value.launchers),
     };
   } catch {
     return { ...defaults };

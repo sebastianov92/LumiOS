@@ -1,4 +1,4 @@
-import type { TVApp, TVInput, Category } from './types';
+import type { AppTarget, TVApp, TVInput, Category } from './types';
 
 const identities: { match: RegExp; brand: string; category: Category }[] = [
   {
@@ -34,6 +34,30 @@ export function appIdentity(id: string, title: string): TVApp {
   return { id, title, brand: match?.brand ?? 'generic', category: match?.category ?? 'Utilities' };
 }
 
+const iconExtensions = /\.(?:png|jpe?g|webp)$/i;
+
+// Icon paths are passed to a root shell, so only plain absolute paths without quotes,
+// whitespace or parent segments are accepted.
+export function validIconPath(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= 300 &&
+    /^\/[A-Za-z0-9._@+/-]+$/.test(value) &&
+    !value.split('/').includes('..') &&
+    iconExtensions.test(value)
+  );
+}
+
+function resolveIconPath(entry: Record<string, unknown>): string | undefined {
+  const folder = typeof entry.folderPath === 'string' ? entry.folderPath.replace(/\/+$/, '') : '';
+  for (const candidate of [entry.largeIcon, entry.icon]) {
+    if (typeof candidate !== 'string' || !candidate) continue;
+    const path = candidate.startsWith('/') ? candidate : folder ? `${folder}/${candidate}` : '';
+    if (validIconPath(path)) return path;
+  }
+  return undefined;
+}
+
 export function validAppId(id: unknown): id is string {
   return (
     typeof id === 'string' && id.length <= 128 && /^[a-zA-Z0-9]+(?:[._-][a-zA-Z0-9]+)*$/.test(id)
@@ -62,9 +86,9 @@ export function normalizeApps(raw: unknown): TVApp[] {
         ((entry.visible === false || entry.visible === 'false') && !isLiveTV)
       )
         return [];
-      // Internal services, input stubs and Luma itself aren't applications to put in the library.
+      // Internal services, input stubs and LumiOS itself aren't applications to put in the library.
       if (
-        entry.id === 'com.luma.launcher' ||
+        entry.id === 'com.dezik.lumios' ||
         entry.id === 'com.webos.app.home' ||
         entry.id.startsWith('com.webos.app.hdmi') ||
         entry.id.startsWith('com.webos.app.externalinput.')
@@ -77,8 +101,41 @@ export function normalizeApps(raw: unknown): TVApp[] {
       )
         return [];
       seen.add(entry.id);
-      return [appIdentity(entry.id, title || entry.id)];
+      const app = appIdentity(entry.id, title || entry.id);
+      const iconPath = resolveIconPath(entry);
+      return [iconPath ? { ...app, iconPath } : app];
     })
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+// Guess the device behind an input from its label (TV label or the user's own name).
+export function inputKind(title: string): TVInput['kind'] {
+  return /playstation|xbox|switch|console|nintendo/i.test(title)
+    ? 'console'
+    : /apple|stream|fire|roku|chromecast/i.test(title)
+      ? 'streamer'
+      : /pc|computer|laptop|mac/i.test(title)
+        ? 'computer'
+        : 'hdmi';
+}
+
+// Every launchable app, hidden ones included: launcher cards may open any of them.
+export function normalizeTargets(raw: unknown): AppTarget[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  return raw
+    .flatMap((entry) => {
+      if (!entry || !validAppId(entry.id) || seen.has(entry.id) || entry.id === 'com.dezik.lumios')
+        return [];
+      seen.add(entry.id);
+      const title = (typeof entry.title === 'string' ? entry.title : '')
+        // oxlint-disable-next-line eslint/no-control-regex -- Remove control characters from TV-supplied labels.
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .trim()
+        .slice(0, 120);
+      return [{ id: entry.id, title: title || entry.id }];
+    })
+    .slice(0, 1000)
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
@@ -102,13 +159,7 @@ export function normalizeInputs(raw: unknown): TVInput[] {
             .trim()
             .slice(0, 120)
         : port;
-    const kind = /playstation|xbox|switch|console/i.test(title)
-      ? 'console'
-      : /apple|stream|fire|roku/i.test(title)
-        ? 'streamer'
-        : /pc|computer|laptop/i.test(title)
-          ? 'computer'
-          : 'hdmi';
+    const kind = inputKind(title);
     return [
       {
         id: entry.appId,
@@ -176,3 +227,12 @@ export const demoInputs: TVInput[] = [
   },
   { id: 'com.webos.app.hdmi3', title: 'HDMI 3', port: 'HDMI 3', connected: false, kind: 'hdmi' },
 ];
+
+export const demoTargets: AppTarget[] = [
+  ...demoApps.map(({ id, title }) => ({ id, title })),
+  { id: 'airplay', title: 'AirPlay' },
+  { id: 'com.webos.app.miracast', title: 'Screen Share' },
+  { id: 'com.webos.app.btspeakerapp', title: 'Bluetooth Audio Playback' },
+  { id: 'com.webos.app.homeconnect', title: 'Home Dashboard' },
+  { id: 'com.palm.app.settings', title: 'Settings' },
+].sort((a, b) => a.title.localeCompare(b.title));

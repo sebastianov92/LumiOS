@@ -1,12 +1,15 @@
 import { ConnectionIcon } from './connection-icon';
 import { InputStatus } from './input-status';
-import type { TVInput } from '../types';
+import { inputHeading } from '../inputs';
+import type { ResolvedIcon, TVInput } from '../types';
 
 export function InputCard({
   input,
+  icon,
   onLaunch,
 }: {
   input: TVInput;
+  icon?: ResolvedIcon;
   onLaunch: (input: TVInput) => void;
 }) {
   return (
@@ -19,10 +22,10 @@ export function InputCard({
       }}
     >
       <span className="input-art">
-        <ConnectionIcon input={input} />
+        <ConnectionIcon input={input} icon={icon} />
       </span>
       <span className="input-info">
-        <span className="input-title">{input.port}</span>
+        <span className="input-title">{inputHeading(input)}</span>
         <span className="input-state">
           <InputStatus input={input} />
         </span>

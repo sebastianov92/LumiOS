@@ -10,7 +10,7 @@ try {
   const session = await page.context().newCDPSession(page);
   await session.send('Emulation.setCPUThrottlingRate', { rate: 6 });
   await page.addInitScript(() => {
-    window.PalmSystem = { identifier: 'com.luma.launcher' };
+    window.PalmSystem = { identifier: 'com.dezik.lumios' };
     window.PalmServiceBridge = class {
       onservicecallback = () => {};
       cancel() {}
@@ -36,7 +36,7 @@ try {
         setTimeout(() => this.onservicecallback(JSON.stringify(response)), 0);
       }
     };
-    const measures = (window.__lumaMeasures = { bounds: 0, visibility: 0, scrolls: 0 });
+    const measures = (window.__lumiosMeasures = { bounds: 0, visibility: 0, scrolls: 0 });
     for (const [method, key] of [
       ['getBoundingClientRect', 'bounds'],
       ['getClientRects', 'visibility'],
@@ -67,7 +67,7 @@ try {
       press(index);
       await new Promise(requestAnimationFrame);
     }
-    Object.assign(window.__lumaMeasures, { bounds: 0, visibility: 0, scrolls: 0 });
+    Object.assign(window.__lumiosMeasures, { bounds: 0, visibility: 0, scrolls: 0 });
     const durations = [];
     for (let index = 0; index < 60; index++) {
       const start = performance.now();
@@ -83,7 +83,7 @@ try {
         (durations.reduce((sum, value) => sum + value, 0) / durations.length).toFixed(2),
       ),
       p95HandlerMs: Number(durations[Math.floor(durations.length * 0.95)].toFixed(2)),
-      ...window.__lumaMeasures,
+      ...window.__lumiosMeasures,
     };
   });
   const bundle = await fs.stat(path.join(root, 'dist/app/app.js'));

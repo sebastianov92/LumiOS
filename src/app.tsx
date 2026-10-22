@@ -25,8 +25,13 @@ import { moveFocus, type Direction } from './navigation';
 import { loadPreferences, savePreferences } from './storage';
 import { wallpapers } from './wallpapers';
 import { moveFavorite } from './favorites';
-import { visibleInputs } from './inputs';
-import type { Category, Inventory, Page, Preferences, TVApp, TVInput } from './types';
+import { applyInputNames, launcherInputs, visibleInputs } from './inputs';
+import { useTVIcons } from './use-tv-icons';
+import { usePacks } from './use-packs';
+import { findIcon, iconRef, resolveAppIcon, resolveInputIcon } from './icnl';
+import { useSystemPreload } from './preload';
+import type { IconDescription } from './components/icon-settings';
+import type { Category, Inventory, Page, Preferences, ResolvedIcon, TVApp, TVInput } from './types';
 import { categoryLabel, LanguageProvider, useTranslation } from './i18n';
 
 const categories: Category[] = ['Streaming', 'Music', 'Gaming', 'Utilities'];
@@ -57,8 +62,36 @@ function Launcher({
   const [inventory, setInventory] = useState<Inventory>({
     apps: [],
     inputs: [],
+    targets: [],
     warnings: [],
   });
+  const tvIcons = useTVIcons(inventory.apps);
+  const packs = usePacks();
+  const systemPreload = useSystemPreload();
+  // Icon priority per app: pack entry (override, exact id, match) → TV icon → built-in brand.
+  const resolvedIcons = useMemo(() => {
+    const map = new Map<string, IconDescription>();
+    for (const app of inventory.apps) {
+      const hit = resolveAppIcon(app, packs.packs, preferences.iconOverrides);
+      const ref = hit ? iconRef(hit.pack.id, hit.icon.meta.slug) : '';
+      const url = ref ? packs.urls.get(ref) : undefined;
+      const tv = tvIcons[app.id];
+      if (hit && url)
+        map.set(app.id, {
+          icon: { source: 'pack', url, ref, kind: hit.icon.meta.kind },
+          source: 'pack',
+          packName: hit.pack.name,
+        });
+      else if (tv)
+        map.set(app.id, { icon: { source: 'tv', url: tv.url, color: tv.color }, source: 'tv' });
+      else map.set(app.id, { source: app.brand === 'generic' ? 'generic' : 'builtin' });
+    }
+    return map;
+  }, [inventory.apps, packs.packs, packs.urls, preferences.iconOverrides, tvIcons]);
+  const describeIcon = useCallback(
+    (app: TVApp): IconDescription => resolvedIcons.get(app.id) ?? { source: 'generic' },
+    [resolvedIcons],
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [optionsApp, setOptionsApp] = useState<TVApp | null>(null);
@@ -91,10 +124,38 @@ function Launcher({
       }),
     [favoriteIds, appMap, hiddenIds],
   );
-  const homeInputs = useMemo(
-    () => visibleInputs(inventory.inputs, preferences.inputVisibility),
-    [inventory.inputs, preferences.inputVisibility],
+  const inputs = useMemo(
+    () => applyInputNames(inventory.inputs, preferences.inputNames),
+    [inventory.inputs, preferences.inputNames],
   );
+  const launcherCards = useMemo(
+    () => launcherInputs(preferences.launchers, inventory.targets),
+    [preferences.launchers, inventory.targets],
+  );
+  const homeInputs = useMemo(
+    () => [
+      ...visibleInputs(inputs, preferences.inputVisibility),
+      ...visibleInputs(launcherCards, preferences.inputVisibility),
+    ],
+    [inputs, launcherCards, preferences.inputVisibility],
+  );
+  // Pack icons for input cards: the user's pick or a pack entry listing the input; launchers
+  // carry their own icon reference.
+  const inputIcons = useMemo(() => {
+    const map = new Map<string, ResolvedIcon>();
+    const add = (id: string, hit: ReturnType<typeof findIcon>) => {
+      if (!hit) return;
+      const ref = iconRef(hit.pack.id, hit.icon.meta.slug);
+      const url = packs.urls.get(ref);
+      if (url) map.set(id, { source: 'pack', url, ref, kind: hit.icon.meta.kind });
+    };
+    for (const input of inputs)
+      add(input.id, resolveInputIcon(input.id, packs.packs, preferences.inputIcons));
+    for (const launcher of preferences.launchers)
+      if (launcher.icon) add(launcher.id, findIcon(packs.packs, launcher.icon));
+    return map;
+  }, [inputs, preferences.launchers, preferences.inputIcons, packs.packs, packs.urls]);
+  const inputIconFor = useCallback((input: TVInput) => inputIcons.get(input.id), [inputIcons]);
   const hiddenCount = useMemo(
     () => inventory.apps.filter((app) => hiddenIds.has(app.id)).length,
     [inventory.apps, hiddenIds],
@@ -206,7 +267,7 @@ function Launcher({
       pendingLaunch.current = true;
       setLaunching(app.id);
       try {
-        await launchApp(app.id);
+        await launchApp('target' in app && app.target ? app.target : app.id);
         if (!('port' in app))
           setPreferences((current) => ({
             ...current,
@@ -420,6 +481,7 @@ function Launcher({
       key={app.id}
       app={app}
       prefix={prefix}
+      icon={resolvedIcons.get(app.id)?.icon}
       pinned={pinned}
       launching={launching === app.id}
       reordering={prefix === 'favorite' && reordering === app.id}
@@ -440,7 +502,7 @@ function Launcher({
   };
 
   return (
-    <div className={`luma${reducedMotion ? ' reduce-motion' : ''}`}>
+    <div className={`lumios${reducedMotion ? ' reduce-motion' : ''}`}>
       <div className="landscape-fallback" />
       <div
         className={`wallpaper wallpaper-${preferences.wallpaper}`}
@@ -564,7 +626,12 @@ function Launcher({
                   </div>
                   <div className="input-grid home-input-grid">
                     {homeInputs.map((input) => (
-                      <InputCard key={input.id} input={input} onLaunch={onLaunch} />
+                      <InputCard
+                        key={input.id}
+                        input={input}
+                        icon={inputIcons.get(input.id)}
+                        onLaunch={onLaunch}
+                      />
                     ))}
                   </div>
                 </section>
@@ -689,14 +756,68 @@ function Launcher({
           {page === 'settings' ? (
             <Settings
               preferences={preferences}
-              inputs={inventory.inputs}
+              inputs={inputs}
               inputsLoading={loading}
               inputsWarning={inventory.warnings[0]}
+              launchers={launcherCards}
+              targets={inventory.targets}
+              inputIconFor={inputIconFor}
+              onNotify={notify}
+              systemPreload={systemPreload}
+              onToggleSystemPreload={() => {
+                if (systemPreload.available !== true) {
+                  if (isTV()) notify(systemPreload.error || t('systemPreloadUnavailable'), true);
+                  else notify(t('tvOnlyHint'));
+                  return;
+                }
+                if (systemPreload.busy) return;
+                notify(t('systemPreloadWorking'));
+                systemPreload.toggle().then(
+                  (status) =>
+                    notify(t(status.enabled ? 'systemPreloadEnabled' : 'systemPreloadDisabled')),
+                  (error: unknown) =>
+                    notify(
+                      t('systemPreloadError', {
+                        error: error instanceof Error ? error.message : '',
+                      }),
+                      true,
+                    ),
+                );
+              }}
+              apps={inventory.apps}
+              packs={packs}
+              describeIcon={describeIcon}
               onUpdate={update}
               onRefresh={() => {
                 void refresh();
                 notify(t('refreshNotice'));
               }}
+              onImportUsb={() => {
+                notify(t('packsLoading'));
+                packs.importFromUsb().then(
+                  (count) => notify(count ? t('packsImported', { count }) : t('noUsbPacks')),
+                  (error: unknown) =>
+                    notify(
+                      t('usbError', { error: error instanceof Error ? error.message : '' }),
+                      true,
+                    ),
+                );
+              }}
+              onReloadPacks={() => {
+                void packs.reload().then(() => notify(t('packsReloaded')));
+              }}
+              onRemovePack={(pack) =>
+                packs.remove(pack).then(
+                  () => {
+                    notify(t('packRemoved', { pack: pack.name }));
+                    return true;
+                  },
+                  (error: unknown) => {
+                    notify(error instanceof Error ? error.message : t('tvUnreachable'), true);
+                    return false;
+                  },
+                )
+              }
             />
           ) : null}
           {error && inventory.apps.length ? (
@@ -746,7 +867,7 @@ function Launcher({
               )}
             </div>
             {page === 'settings' ? (
-              <span className="settings-version" aria-label="Luma version 1.1.0">
+              <span className="settings-version" aria-label="LumiOS version 1.1.0">
                 v1.1.0
               </span>
             ) : null}

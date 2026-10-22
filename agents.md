@@ -1,4 +1,4 @@
-# Luma agent context
+# LumiOS agent context
 
 ## Checks
 
@@ -15,7 +15,7 @@ pnpm test:browser
 
 `pnpm check` runs Oxlint and TypeScript. Run `pnpm lint:fix` to apply automatic lint fixes. Oxlint checks TypeScript, React, hooks, and accessibility rules; generated output is excluded. Formatting uses Oxfmt: `pnpm format` writes formatting changes and `pnpm format:check` verifies them.
 
-Build before running browser tests so packaged `file://` tests exercise the current code. Browser checks cover remote navigation, hold-OK options, favorites, settings, input visibility modes, search, persistence, focus restoration, weather configuration, temperature units, caching, and TV-service failure behavior with a mock bridge. Weather APIs are mocked; tests do not connect to a TV. On Linux, install Chromium's dependencies with `pnpm exec playwright install --with-deps chromium`.
+Build before running browser tests so packaged `file://` tests exercise the current code. The browser suite is timing-sensitive: focus tests that race `requestAnimationFrame` can fail under machine load with 3 workers. A test that fails only in a full run and passes with `pnpm exec playwright test -g "<name>" --repeat-each=3` is a load flake, not a regression. Browser checks cover remote navigation, hold-OK options, favorites, settings, input visibility modes, search, persistence, focus restoration, weather configuration, temperature units, caching, and TV-service failure behavior with a mock bridge. Weather APIs are mocked; tests do not connect to a TV. On Linux, install Chromium's dependencies with `pnpm exec playwright install --with-deps chromium`.
 
 ## Structure
 
@@ -23,21 +23,35 @@ Build before running browser tests so packaged `file://` tests exercise the curr
 
 Project filenames use lowercase kebab-case, including React components (for example, `app-tile.tsx`). Keep `package.json` and `appinfo.json` versions synchronized; change the version only when requested.
 
-## Collecting app icons from a webOS TV
+## App icons
 
-The optional installed-app artwork prototype can collect icons from a developer's own rooted TV over SSH. Set `TV_IP` to the TV's address and run these commands from the repository root:
+Every installed app ships its own icon on the TV. `src/tv-icons.ts` reads those files at runtime through Homebrew Channel's `exec` service: one `wc -c` listing for sizes, then `cat` batches planned so each reply stays under 256 KiB (the service buffers at most about 1 MiB of stdout). Bytes come from the reply's base64 `stdoutBytes`; a tile background colour is derived from the icon's edge pixels (`dominantColor`); records are cached in IndexedDB (`lumios` / `tv-icons`) keyed by app id and invalidated when the icon path changes. `src/use-tv-icons.ts` turns records into object URLs for `AppTile`. Icon priority: icon pack (planned `.icnl`) → the TV icon → built-in brand artwork in `brand.tsx` → generic symbol. Icon loading is silent and never blocks the launcher.
 
-```sh
-ssh root@TV_IP node < tools/collect-tv-icons.js
-ssh root@TV_IP 'tar -cf - -C /tmp/luma-artwork .' > icons.tar
-mkdir -p public/app-icons
-tar -xf icons.tar -C public/app-icons
-mv public/app-icons/app-icons.json src/app-icons.json
-node tools/icon-colours.mjs
-pnpm build
-```
+Icon paths come from `listApps` (`largeIcon`, then `icon`, resolved against `folderPath`) and must pass `validIconPath` before they reach a shell command: absolute, no quotes, whitespace or `..`, image extension only. Desktop previews have no TV and keep the built-in artwork.
 
-The collector checks `/media/developer/apps/usr/palm/applications`, `/media/cryptofs/apps/usr/palm/applications`, and `/usr/palm/applications`, preferring each app's `largeIcon`, then `icon`, then `icon.png`. It copies image files into `/tmp/luma-artwork` on the TV and writes an app-ID-to-image map. After copying that output into `public/app-icons/`, the map points to the bundled paths and `tools/icon-colours.mjs` generates matching tile background colors in `src/icon-colours.css`. Only icons found in those locations are collected; no icon set is supplied by the repository, so `src/app-icons.json` can be empty until collection is run. The collector requires SSH/root access to the developer's own TV.
+`tools/collect-tv-icons.js` still collects icons over SSH into `/tmp/lumios-artwork` for building icon packs on a desktop. The app bundles no collected icons.
+
+## Icon packs (.icnl)
+
+An `.icnl` file is a ZIP with `pack.json` plus `icons/<slug>/icon.<svg|png|jpg|webp>` and an optional `icons/<slug>/style.css` whose root selector is `.icon`. `src/icnl.ts` is the single definition of the format (manifest validation, CSS scoping and sanitizing, icon resolution) and is shared by the app, the CLI (`tools/icnl.mjs`, run with `pnpm icnl`) and the tests. `pack.json` entries map a slug to `title`, `kind` (`tile` or `glyph`), exact `apps` ids, a `match` regex, `inputs` ids and `launcher`. Resolution order per app: the user's override in `preferences.iconOverrides` (`"pack/slug"` or `"tv"`), then exact ids, then match patterns, packs in id order; the TV's own icon and the built-in brand artwork follow.
+
+Packs live in `/media/developer/lumios/packs/` on the TV. `src/packs.ts` lists them through `exec` (`md5sum` + `wc -c`), reads changed files with `dd` in 256 KiB chunks, unzips them in the app with fflate and caches parsed packs in IndexedDB (`packs` store) by content hash. USB import copies `/tmp/usb/*/*/*.icnl` into that folder under shell-safe names. `src/use-packs.ts` keeps packs in state, creates an object URL per icon and injects one `<style id="icnl-styles">` with every icon's CSS scoped to `.app-face[data-icnl="pack/slug"]` and `.icon-preview[...]`. Pack CSS never reaches the page unscoped: at-rules, imports, non-`data:` URLs and expressions are dropped.
+
+Settings → Icons (`src/components/icon-settings.tsx`) lists packs, imports from USB, rereads the folder, and lets the user pick an icon per app. `packs/luma-brands/` is the example pack; `pnpm icnl pack packs/luma-brands` builds it, `pnpm icnl push dist/luma-brands.icnl --device tv` installs it, `pnpm icnl from-tv --device tv` turns the TV's own icons into a pack.
+
+## Inputs, names and launchers
+
+`src/inputs.ts` owns the per-input preferences. `inputNames` replaces the TV label with the user's own name and re-guesses the device kind from it (`inputKind` in `catalog.ts`), so a renamed "Switch 2" gets the console symbol; cards and rows show the name big and the port small (`inputHeading`, `InputStatus`). `inputIcons` maps an input to a `"pack/slug"` reference; without one, a pack icon whose `inputs` list names the input is used (`resolveInputIcon` in `icnl.ts`), then the label regexes in `connection-icon.tsx`. Glyph icons (`kind: "glyph"`) are rendered as CSS masks (`.input-glyph`) so monochrome SVGs take the card colour; tile icons fill the art box.
+
+Launchers (`preferences.launchers`: `{ id, title, icon, target }`) are Home cards that open any app on the TV. `launcherInputs` turns them into `TVInput` records with `kind: "launcher"` and `target`, `visibleInputs` hides them only when their visibility is `off`, and `onLaunch` in `app.tsx` launches `target` instead of the card id. Targets come from `Inventory.targets` (`normalizeTargets`: every id from `listApps`, hidden system apps included, LumiOS excluded); `launcherSuggestions` lists AirPlay, Screen Share, Bluetooth audio, Home Dashboard and Live TV first. Default launcher symbols live in `connection-icon.tsx`.
+
+Settings → Inputs (`src/components/input-settings.tsx`) lists inputs and launchers. The input subpage holds the name field (an `<input>`; webOS shows its keyboard on focus, Enter commits and moves on), the icon row and the On/Off/Auto options, keeping the `input-visibility-option-*` focusables. The launcher subpage adds the target row and delete. Icon and target pickers open as child subpages: `openSubpage(..., parent)` records the parent and `closeSubpage` returns to it instead of the section list.
+
+## Preload and keep-alive
+
+Two levels, both outside `appinfo.json` because webOS reads `keepAlive` and `preload` from the launch payload only. `tv/autostart.sh enable` installs the Homebrew boot hook and launches `{"id":"com.dezik.lumios","keepAlive":true}` after boot: when another app takes the screen WAM hides the page instead of closing it, so the next launch (the Home key mapping should also pass `"keepAlive":true`) only shows it again. `enable preload` launches `{"keepAlive":true,"preload":"full"}` instead: the page loads hidden and the first Home press reveals it. The mode is stored in `/media/developer/lumios/autostart.conf`. While hidden WAM suspends JS; the clock, weather and inventory already resume on `visibilitychange`/`webOSRelaunch`.
+
+System preload (`tv/preload.js`, run as root through `exec`; `src/preload.ts` wraps it and `Settings → General → System preload` toggles it) registers LumiOS with LG's preload manager the way AltHome does: it reads the configd key `com.webos.service.preloadmanager.supportAppList`, backs it up to `/media/developer/lumios/preload-backup.json` the first time, replaces the `com.webos.app.home` entry with LumiOS (`preloadMode: "partial"`, priority and memory copied from LG Home), writes the result with `setConfigs`, keeps a copy in `preload.json` that the boot hook re-applies, and restarts `preload-manager.service`. Disabling restores the backup. The script prints one JSON line and always exits 0 so the app can read errors from stdout. Mark it experimental in user-facing text: it is verified against SAM/WAM/AltHome sources, not yet on this project's own TV.
 
 ## Performance
 
@@ -57,7 +71,7 @@ Gallery previews use clipped image elements with an inset border, avoiding repea
 
 `.github/workflows/ci.yml` checks pull requests and pushes to `main` on Ubuntu with Node.js 24. It checks formatting, runs unit tests, builds and verifies the IPK, and runs Chromium browser tests. Successful builds upload the release files as a workflow artifact. Successful `main` builds publish new versions using `GITHUB_TOKEN`, automatically creating the version tag at the tested commit. Published versions are skipped; a draft can be resumed when its tag matches that commit. An existing tag pointing elsewhere stops publication. `workflow_dispatch` on `main` provides a manual retry without a tag input. Main runs are serialized so new pushes do not interrupt publication; outdated PR runs can be cancelled.
 
-`tools/repository.mjs` runs after packaging. It creates `dist/repo.json` in Homebrew Channel's paginated package format and copies the native large icon into `dist/`. The feed uses version-specific release URLs and the SHA-256 and size of the normalized IPK. It rejects mismatched package/app versions and release tags, and exposes its validated version tag through `GITHUB_OUTPUT` for the release job. The install URL is `https://github.com/ecklf/lg-luma/releases/latest/download/repo.json`; it requires public repository/release access and an initial published release. Publishing the feed as a release asset avoids bot commits to the default branch.
+`tools/repository.mjs` runs after packaging. It creates `dist/repo.json` in Homebrew Channel's paginated package format and copies the native large icon into `dist/`. The feed uses version-specific release URLs and the SHA-256 and size of the normalized IPK. It rejects mismatched package/app versions and release tags, and exposes its validated version tag through `GITHUB_OUTPUT` for the release job. The install URL is `https://github.com/sebastianov92/LumiOS/releases/latest/download/repo.json`; it requires public repository/release access and an initial published release. Publishing the feed as a release asset avoids bot commits to the default branch.
 
 ## Remote and pointer controls
 

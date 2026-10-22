@@ -1,0 +1,7 @@
+.icon {
+  background: linear-gradient(145deg, #064c84, #00254e);
+}
+.icon img {
+  width: 70%;
+  filter: brightness(0) invert(0.96);
+}

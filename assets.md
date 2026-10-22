@@ -1,6 +1,6 @@
-# Luma assets and references
+# LumiOS assets and references
 
-- `public/mark.svg`, `public/app-icon.svg`, `public/wallpapers/midnight.svg`, `public/wallpapers/slate.svg`, and `public/wallpapers/prism.svg`: original Luma artwork, MIT. The TV app icon has a transparent background; webOS supplies the panel via `iconColor`, so there is no second background with its own clipping radius.
+- `public/mark.svg`, `public/app-icon.svg`, `public/wallpapers/midnight.svg`, `public/wallpapers/slate.svg`, and `public/wallpapers/prism.svg`: original LumiOS artwork, MIT. The TV app icon has a transparent background; webOS supplies the panel via `iconColor`, so there is no second background with its own clipping radius.
 - `public/wallpapers/dunes.jpg`: Unsplash photo `1509316785289-025f5b846b35`, https://images.unsplash.com/photo-1509316785289-025f5b846b35. Bundled under the [Unsplash License](https://unsplash.com/license).
 - `public/wallpapers/san-francisco.jpg`: Unsplash photo `1501594907352-04cda38ebc29`, https://images.unsplash.com/photo-1501594907352-04cda38ebc29. Bundled under the [Unsplash License](https://unsplash.com/license).
 - `public/wallpapers/summit.jpg`: Unsplash photo `1454496522488-7a8e488e8606`, https://images.unsplash.com/photo-1454496522488-7a8e488e8606. Bundled under the [Unsplash License](https://unsplash.com/license).
@@ -9,9 +9,9 @@
 - `public/wallpapers/northern-lights.jpg`: Unsplash photo `1531366936337-7c912a4589a7`, https://images.unsplash.com/photo-1531366936337-7c912a4589a7. Bundled under the [Unsplash License](https://unsplash.com/license).
 - Inter variable font: Rasmus Andersson, SIL Open Font License 1.1. License bundled at `public/fonts/ofl.txt`.
 - Interface icons: Lucide, ISC license (dependency license in node_modules/lucide-react/LICENSE).
-- Brand treatments identify installed third-party apps; their names and marks belong to their respective owners. Luma is not affiliated with those companies, Apple, or LG.
+- Brand treatments identify installed third-party apps; their names and marks belong to their respective owners. LumiOS is not affiliated with those companies, Apple, or LG.
 
-Luma's logo is a folded-light **L**: an icy-blue ribbon turns into a cyan-and-indigo base. The browser mark and TV app icon share the same vector geometry, sized for a clear silhouette at small icon sizes.
+LumiOS's logo is a folded-light **L**: an icy-blue ribbon turns into a cyan-and-indigo base. The browser mark and TV app icon share the same vector geometry, sized for a clear silhouette at small icon sizes.
 
 `public/wallpaper-thumbnails/` contains 480×270 JPEG derivatives of the photographs listed above. They are resized/cropped for the Settings gallery and retain each source photograph's license and attribution.
 

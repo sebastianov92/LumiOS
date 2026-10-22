@@ -1,6 +1,6 @@
 import type { Language, TemperatureUnit, WeatherLocation, WeatherReading } from './types';
 
-export const WEATHER_CACHE_KEY = 'luma.weather.v1';
+export const WEATHER_CACHE_KEY = 'lumios.weather.v1';
 export const WEATHER_REFRESH_MS = 15 * 60 * 1000;
 const MAX_CACHE_AGE_MS = 6 * 60 * 60 * 1000;
 
@@ -231,6 +231,19 @@ export function weatherCondition(
       '雪',
       '雷暴',
       '当前天气',
+    ],
+    es: [
+      'Despejado',
+      'Noche despejada',
+      'Mayormente despejado',
+      'Parcialmente nublado',
+      'Nublado',
+      'Niebla',
+      'Llovizna',
+      'Lluvia',
+      'Nieve',
+      'Tormentas',
+      'Clima actual',
     ],
   }[language];
   if (code === 0) return { label: labels[isDay ? 0 : 1], icon: isDay ? 'sun' : 'moon' };

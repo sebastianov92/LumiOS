@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { zipSync } from 'fflate';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -20,7 +21,7 @@ test('home is remote navigable, opening a preview never pretends to launch a TV 
   await page.getByRole('button', { name: 'Dismiss notification' }).click();
   await netflix.focus();
   await page.mouse.move(1, 1);
-  await page.screenshot({ path: info.outputPath('luma-home.png') });
+  await page.screenshot({ path: info.outputPath('lumios-home.png') });
   expect(errors).toEqual([]);
 });
 
@@ -178,7 +179,7 @@ for (const width of [1920, 390]) {
     await page.setViewportSize({ width, height: width > 600 ? 1080 : 844 });
     await page.addInitScript(() => {
       localStorage.setItem(
-        'luma.preferences.v1',
+        'lumios.preferences.v1',
         JSON.stringify({ version: 1, hidden: ['netflix'] }),
       );
     });
@@ -258,8 +259,8 @@ for (const [section, control, selected, first, subpage, title] of [
     'Inputs',
     'setting-input-com.webos.app.hdmi1',
     'input-visibility-option-auto',
-    'input-visibility-option-on',
-    'input-visibility',
+    'input-name',
+    'input',
     'HDMI 1',
   ],
 ] as const) {
@@ -384,7 +385,7 @@ test('Up keeps app options inside their modal focus scope', async ({ page }) => 
 test('Home entry follows the visible saved favorite order', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      'luma.preferences.v1',
+      'lumios.preferences.v1',
       JSON.stringify({
         version: 1,
         favorites: ['netflix', 'youtube.leanback.v4', 'com.disney.disneyplus-prod'],
@@ -426,7 +427,7 @@ test('navigation enters the primary action when favorites or inputs are empty', 
   page,
 }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('luma.preferences.v1', JSON.stringify({ version: 1, favorites: [] }));
+    localStorage.setItem('lumios.preferences.v1', JSON.stringify({ version: 1, favorites: [] }));
   });
   await installMockTV(page, false, undefined, []);
   await page.goto('/');
@@ -536,7 +537,7 @@ test('Auto reacts to refreshes and input choices survive renamed devices and rea
 }) => {
   await page.addInitScript(() => {
     localStorage.setItem(
-      'luma.preferences.v1',
+      'lumios.preferences.v1',
       JSON.stringify({ version: 1, inputVisibility: { 'com.webos.app.hdmi2': 'on' } }),
     );
   });
@@ -637,7 +638,7 @@ test('Settings sidebar and content support remote navigation and persistent pref
   await page.goto('/');
   const settings = page.getByRole('button', { name: 'Settings', exact: true });
   await settings.click();
-  await expect(page.getByRole('region', { name: 'Luma settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'LumiOS settings', exact: true })).toBeVisible();
   await expect(settings).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.keyboard.press('ArrowDown');
@@ -674,13 +675,13 @@ test('Settings sidebar and content support remote navigation and persistent pref
   await expect(page.locator('[data-focusable="setting-home-app-names"]')).toBeFocused();
   await expect(page.locator('[data-focusable="setting-clock-format"]')).toContainText('24-hour');
   await page.getByRole('switch', { name: 'Reduced motion', exact: false }).click();
-  await page.screenshot({ path: info.outputPath('luma-settings.png') });
+  await page.screenshot({ path: info.outputPath('lumios-settings.png') });
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Open Netflix', exact: true })).toBeFocused();
   await page.reload();
   await expect(page.locator('.wallpaper')).toHaveClass(/wallpaper-summit/);
-  await expect(page.locator('.luma')).toHaveClass(/reduce-motion/);
+  await expect(page.locator('.lumios')).toHaveClass(/reduce-motion/);
 });
 
 test('nested language menu supports remote navigation and persists', async ({ page }) => {
@@ -696,7 +697,9 @@ test('nested language menu supports remote navigation and persists', async ({ pa
   await page.keyboard.press('Enter');
   await expect(page.locator('html')).toHaveAttribute('lang', 'de-DE');
   await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Luma-Einstellungen', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'LumiOS-Einstellungen', exact: true }),
+  ).toBeVisible();
   await expect(page.locator('.settings-sidebar')).toContainText('Allgemein');
   await page.reload();
   await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
@@ -708,7 +711,7 @@ test('nested language menu supports remote navigation and persists', async ({ pa
   await page.keyboard.press('Enter');
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
   await expect(page.getByRole('button', { name: '主页', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Luma 设置', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'LumiOS 设置', exact: true })).toBeVisible();
 });
 
 test('General D-pad moves down to the language selector and up from refresh', async ({ page }) => {
@@ -885,7 +888,7 @@ test('the packaged file app loads offline with CSP, local fonts, no module fetch
   await expect(page.locator('.header-time')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open Netflix', exact: true })).toBeFocused();
   await page.evaluate(() => document.fonts.ready);
-  expect(await page.evaluate(() => document.fonts.check('16px "Luma Sans"'))).toBe(true);
+  expect(await page.evaluate(() => document.fonts.check('16px "LumiOS Sans"'))).toBe(true);
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await expect(page.locator('.library-grid .brand-logo')).toHaveCount(9);
   await expect
@@ -904,7 +907,7 @@ test('the packaged file app loads offline with CSP, local fonts, no module fetch
   await expect(page.getByRole('button', { name: /PlayStation 5/ })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Inputs', exact: true }).click();
-  await page.screenshot({ path: info.outputPath('luma-inputs.png') });
+  await page.screenshot({ path: info.outputPath('lumios-inputs.png') });
   const thumbnails = await page.locator('.wallpaper-thumbnail > img').evaluateAll((nodes) =>
     Promise.all(
       nodes.map(async (node) => {
@@ -939,6 +942,45 @@ test('the packaged file app loads offline with CSP, local fonts, no module fetch
   expect(errors).toEqual([]);
 });
 
+interface MockPack {
+  path: string;
+  hash: string;
+  size: number;
+  base64: string;
+}
+
+// A one-icon .icnl pack, zipped in Node and served to the mock TV in dd-sized chunks.
+function mockPack(): MockPack {
+  const files = {
+    'pack.json': Buffer.from(
+      JSON.stringify({
+        format: 'icnl/1',
+        name: 'Mock pack',
+        version: '2.0.0',
+        author: 'Tests',
+        icons: {
+          netflix: { title: 'Netflix tile', apps: ['netflix'] },
+          switch: { title: 'Switch glyph', kind: 'glyph', inputs: ['com.webos.app.hdmi2'] },
+        },
+      }),
+    ),
+    'icons/netflix/icon.svg': Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#e50914"/></svg>',
+    ),
+    'icons/netflix/style.css': Buffer.from('.icon { background: rgb(20, 20, 20); }'),
+    'icons/switch/icon.svg': Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>',
+    ),
+  };
+  const bytes = zipSync(files);
+  return {
+    path: '/media/developer/lumios/packs/mock.icnl',
+    hash: 'a'.repeat(32),
+    size: bytes.length,
+    base64: Buffer.from(bytes).toString('base64'),
+  };
+}
+
 async function installMockTV(
   page: Page,
   denied: boolean,
@@ -946,19 +988,24 @@ async function installMockTV(
   devices: Record<string, unknown>[] = [
     { appId: 'com.webos.app.hdmi2', id: 'HDMI_2', port: 2, label: 'Real HDMI', connected: true },
   ],
+  packs: MockPack[] = [],
 ) {
   const manifest = JSON.parse(readFileSync(path.resolve('appinfo.json'), 'utf8'));
   await page.addInitScript(
-    ({ denied, requiredACG, apps, devices }) => {
+    ({ denied, requiredACG, apps, devices, packs }) => {
       const w = window as typeof window & {
         __calls: { uri: string; payload: any }[];
         __devices: typeof devices;
         __inputFailure: boolean;
+        __packs: typeof packs;
+        __preload: boolean;
       };
       w.__calls = [];
       w.__devices = devices;
       w.__inputFailure = false;
-      w.PalmSystem = { identifier: 'com.luma.launcher' };
+      w.__packs = packs;
+      w.__preload = false;
+      w.PalmSystem = { identifier: 'com.dezik.lumios' };
       w.PalmServiceBridge = class {
         onservicecallback = (_raw: string) => {};
         cancel() {}
@@ -979,6 +1026,33 @@ async function installMockTV(
                 errorCode: -1,
                 errorText: 'Denied method call "exec" for category "/"',
               };
+            else if (payload.command.includes('preload.js')) {
+              const action = /preload\.js"? (\w+)/.exec(payload.command)?.[1];
+              if (action === 'enable') w.__preload = true;
+              if (action === 'disable') w.__preload = false;
+              response = {
+                returnValue: true,
+                stdoutString: `${JSON.stringify({ enabled: w.__preload, entries: 3, backup: w.__preload })}\n`,
+              };
+            } else if (payload.command.includes('md5sum'))
+              response = {
+                returnValue: true,
+                stdoutString: w.__packs.map((p) => `${p.hash} ${p.size} ${p.path}\n`).join(''),
+              };
+            else if (payload.command.includes('dd if=')) {
+              const skip = Number(/skip=(\d+)/.exec(payload.command)?.[1] ?? 0);
+              const pack = w.__packs.find((p) => payload.command.includes(`'${p.path}'`));
+              const binary = pack ? atob(pack.base64) : '';
+              response = {
+                returnValue: true,
+                stdoutString: '',
+                stdoutBytes: btoa(binary.slice(skip * 262144, (skip + 1) * 262144)),
+              };
+            } else if (payload.command.startsWith('rm -f ')) {
+              w.__packs = w.__packs.filter((p) => !payload.command.includes(`'${p.path}'`));
+              response = { returnValue: true, stdoutString: '' };
+            } else if (payload.command.includes('/tmp/usb/'))
+              response = { returnValue: true, stdoutString: '' };
             else
               response = {
                 returnValue: true,
@@ -1001,11 +1075,11 @@ async function installMockTV(
         }
       };
     },
-    { denied, requiredACG: manifest.requiredACG as string[], apps, devices },
+    { denied, requiredACG: manifest.requiredACG as string[], apps, devices, packs },
   );
 }
 
-test('a TV uses its real inventory and launches TV settings separately from Luma settings', async ({
+test('a TV uses its real inventory and launches TV settings separately from LumiOS settings', async ({
   page,
 }) => {
   await installMockTV(page, false);
@@ -1041,7 +1115,7 @@ test('a TV uses its real inventory and launches TV settings separately from Luma
     .toEqual(['com.example.real', 'com.palm.app.settings']);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const settingsPage = page.getByRole('region', { name: 'Luma settings', exact: true });
+  const settingsPage = page.getByRole('region', { name: 'LumiOS settings', exact: true });
   await expect(settingsPage).toBeVisible();
   await expect(settingsPage.getByRole('button', { name: 'TV settings', exact: true })).toHaveCount(
     0,
@@ -1074,7 +1148,7 @@ test('mobile preview remains usable without horizontal overflow', async ({ page 
     .boundingBox();
   expect(navigation!.y).toBeGreaterThan(tvSettings!.y + tvSettings!.height);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Luma settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'LumiOS settings', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 320, height: 700 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -1520,7 +1594,7 @@ test('app actions close immediately, keep favorites first, and filter hidden app
   await expect(browser).toBeFocused();
   const readFavoriteOrder = () =>
     page.evaluate(
-      () => JSON.parse(localStorage.getItem('luma.preferences.v1')!).favorites as string[],
+      () => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).favorites as string[],
     );
   const readLibraryOrder = () =>
     page
@@ -1559,4 +1633,270 @@ test('app actions close immediately, keep favorites first, and filter hidden app
   await expect(browser.locator('.favorite-badge')).toHaveCount(0);
   favorites = await readFavoriteOrder();
   expect((await readLibraryOrder()).slice(0, favorites.length)).toEqual(favorites);
+});
+
+test('Spanish is selectable from the language menu', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'General', exact: true }).click();
+  await page.getByRole('button', { name: /Language/ }).press('ArrowRight');
+  await expect(page.locator('[data-focusable="language-option-en"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focusable="language-option-es"]')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es-419');
+  await expect(page.getByRole('button', { name: 'Inicio', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Ajustes de LumiOS', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Inicio', exact: true })).toBeVisible();
+});
+
+test('a TV set to Spanish starts in Spanish on first run', async ({ browser }) => {
+  const context = await browser.newContext({
+    locale: 'es-EC',
+    baseURL: 'http://127.0.0.1:5188',
+    viewport: { width: 1920, height: 1080 },
+  });
+  const page = await context.newPage();
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Inicio', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ajustes', exact: true })).toBeVisible();
+  await context.close();
+});
+
+test('icon packs on the TV style tiles, list in Settings, and can be overridden or removed', async ({
+  page,
+}) => {
+  await installMockTV(
+    page,
+    false,
+    [
+      { id: 'netflix', title: 'Netflix', visible: true },
+      { id: 'com.example.real', title: 'A real TV app', visible: true },
+    ],
+    undefined,
+    [mockPack()],
+  );
+  await page.goto('/');
+  const face = page.locator('.app-tile[data-app-id="netflix"] .app-face').first();
+  await expect(face).toHaveAttribute('data-icnl', 'mock/netflix');
+  await expect(face.locator('img.brand-pack-icon')).toHaveAttribute('src', /^blob:/);
+  await expect
+    .poll(() => page.evaluate(() => document.getElementById('icnl-styles')?.textContent))
+    .toContain('.app-face[data-icnl="mock/netflix"] { background: rgb(20, 20, 20); }');
+  await expect(face).toHaveCSS('background-color', 'rgb(20, 20, 20)');
+  const inputGlyph = page.locator(
+    '[data-focusable="input-com.webos.app.hdmi2"] .input-glyph[data-icnl="mock/switch"]',
+  );
+  await expect(inputGlyph).toBeVisible();
+  await expect(inputGlyph).toHaveCSS('mask-image', /blob:/);
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Icons', exact: true }).click();
+  const packRow = page.locator('[data-focusable="setting-pack-mock"]');
+  await expect(packRow).toContainText('Mock pack');
+  await expect(packRow).toContainText('v2.0.0 · Tests · 2 icons');
+  const netflixRow = page.locator('[data-focusable="setting-app-icon-netflix"]');
+  await expect(netflixRow).toContainText('Mock pack');
+  await expect(netflixRow.locator('.icon-preview')).toHaveAttribute('data-icnl', 'mock/netflix');
+  await expect(page.locator('[data-focusable="setting-app-icon-com.example.real"]')).toContainText(
+    'Generic',
+  );
+
+  await netflixRow.click();
+  await expect(page.locator('[data-focusable="app-icon-option-auto"]')).toBeFocused();
+  await expect(page.getByRole('option', { name: /Netflix tile/ })).toContainText('Mock pack');
+  await page.getByRole('option', { name: 'TV icon', exact: true }).click();
+  await expect(netflixRow).toBeFocused();
+  await expect(netflixRow).toContainText('Built-in');
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).iconOverrides,
+    ),
+  ).toEqual({ netflix: 'tv' });
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(face).not.toHaveAttribute('data-icnl');
+  await expect(face.locator('img.brand-logo')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Icons', exact: true }).click();
+  await netflixRow.click();
+  await page.getByRole('option', { name: /^Automatic/ }).click();
+  await packRow.click();
+  await expect(page.locator('[data-focusable="pack-remove"]')).toBeFocused();
+  await expect(page.locator('.settings-path')).toHaveText(
+    '/media/developer/lumios/packs/mock.icnl',
+  );
+  await page.locator('[data-focusable="pack-remove"]').click();
+  await expect(page.getByRole('status').filter({ hasText: 'Mock pack removed.' })).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'No icon packs yet.' })).toBeVisible();
+  await expect(page.locator('[data-focusable="settings-section-icons"]')).toBeFocused();
+  await expect(netflixRow).toContainText('Built-in');
+});
+
+test('without a TV the Icons section explains where packs go and offers no pack icons', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Icons', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('/media/developer/lumios/packs');
+  await expect(page.locator('[data-focusable="setting-icons-usb"]')).toBeVisible();
+  const row = page.locator('[data-focusable="setting-app-icon-netflix"]');
+  await expect(row).toContainText('Built-in');
+  await row.press('ArrowRight');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(row).toBeFocused();
+});
+
+test('inputs can be renamed from Settings and the name drives the Home card and its icon', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const card = page.locator('[data-focusable="input-com.webos.app.hdmi1"]');
+  await expect(card.locator('.input-title')).toHaveText('HDMI 1');
+  await expect(card.locator('.input-state')).toHaveText('PlayStation 5 · Connected');
+  await expect(card.locator('[data-connection-icon="playstation"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  const row = page.locator('[data-focusable="setting-input-com.webos.app.hdmi1"]');
+  await row.press('ArrowRight');
+  await expect(page.locator('[data-focusable="input-visibility-option-auto"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('[data-focusable="input-icon"]')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  const name = page.locator('[data-focusable="input-name"]');
+  await expect(name).toBeFocused();
+  await expect(name).toHaveAttribute('placeholder', 'HDMI 1');
+  await name.fill('Switch 2 ');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-focusable="input-icon"]')).toBeFocused();
+  await expect(name).toHaveValue('Switch 2');
+  await page.keyboard.press('Escape');
+  await expect(row).toBeFocused();
+  await expect(row.locator('strong')).toHaveText('Switch 2');
+  await expect(row.locator('small')).toHaveText('HDMI 1 · Connected');
+  await expect(row.locator('[data-connection-icon="console"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(card.locator('.input-title')).toHaveText('Switch 2');
+  await expect(card.locator('.input-state')).toHaveText('HDMI 1 · Connected');
+  await expect(card.locator('[data-connection-icon="console"]')).toBeVisible();
+  await page.reload();
+  await expect(card.locator('.input-title')).toHaveText('Switch 2');
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).inputNames,
+    ),
+  ).toEqual({ 'com.webos.app.hdmi1': 'Switch 2' });
+});
+
+test('launchers are added from any TV app, shown on Home, hidden with Off and deleted', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.locator('.home-input-grid .input-card')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  await expect(page.locator('.settings-pane [data-focusable]').first()).toBeFocused();
+  const add = page.locator('[data-focusable="setting-add-launcher"]');
+  await add.press('ArrowRight');
+  await expect(page.locator('[data-focusable="target-option-airplay"]')).toBeFocused();
+  await expect(page.getByRole('option').first()).toContainText('AirPlay');
+  await expect(
+    page.locator('[data-focusable="target-option-com.webos.app.miracast"]'),
+  ).toContainText('Screen Share');
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('status').filter({ hasText: 'AirPlay added to Home.' }),
+  ).toBeVisible();
+  const name = page.locator('[data-focusable="launcher-name"]');
+  await expect(name).toBeFocused();
+  await expect(name).toHaveValue('AirPlay');
+  await name.fill('Mirror iPhone');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-focusable="launcher-icon"]')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.locator('[data-focusable="launcher-target"]')).toContainText('AirPlay');
+  await page.keyboard.press('Escape');
+  const row = page.locator('[data-focusable^="setting-launcher-"]');
+  await expect(row).toBeFocused();
+  await expect(row.locator('strong')).toHaveText('Mirror iPhone');
+  await expect(row.locator('small')).toHaveText('Opens AirPlay');
+  await expect(row.locator('.setting-value')).toHaveText('On');
+
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  const card = page.locator('.home-input-grid .input-launcher');
+  await expect(card).toHaveCount(1);
+  await expect(card.locator('.input-title')).toHaveText('Mirror iPhone');
+  await expect(card.locator('.input-state')).toHaveText('AirPlay');
+  await expect(card.locator('[data-connection-icon="launcher"]')).toBeVisible();
+  await card.click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Mirror iPhone will open on your TV.' }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.home-input-grid .input-launcher .input-title')).toHaveText(
+    'Mirror iPhone',
+  );
+
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  await expect(page.locator('.settings-pane [data-focusable]').first()).toBeFocused();
+  await row.press('ArrowRight');
+  await page.locator('[data-focusable="launcher-visibility-option-off"]').click();
+  await expect(row.locator('.setting-value')).toHaveText('Off');
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('.home-input-grid .input-launcher')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  await expect(page.locator('.settings-pane [data-focusable]').first()).toBeFocused();
+  await row.press('ArrowRight');
+  await page.locator('[data-focusable="launcher-delete"]').click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Mirror iPhone deleted.' }),
+  ).toBeVisible();
+  await expect(add).toBeFocused();
+  await expect(row).toHaveCount(0);
+});
+
+test('system preload is a TV switch that registers LumiOS with the preload manager', async ({
+  page,
+}) => {
+  await installMockTV(page, false);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const row = page.locator('[data-focusable="setting-system-preload"]');
+  await expect(row).toHaveAttribute('aria-checked', 'false');
+  await expect(row.locator('small')).toContainText('preload manager');
+  await expect(row).not.toHaveAttribute('aria-disabled', 'true');
+  await row.click();
+  await expect(page.getByRole('status').filter({ hasText: 'System preload on.' })).toBeVisible();
+  await expect(row).toHaveAttribute('aria-checked', 'true');
+  expect(
+    await page.evaluate(() =>
+      (window as any).__calls
+        .filter((call: any) => call.payload?.command?.includes('preload.js'))
+        .map((call: any) => /preload\.js"? (\w+)/.exec(call.payload.command)?.[1]),
+    ),
+  ).toEqual(['status', 'enable']);
+  await row.click();
+  await expect(page.getByRole('status').filter({ hasText: 'System preload off.' })).toBeVisible();
+  await expect(row).toHaveAttribute('aria-checked', 'false');
+});
+
+test('without a TV the system preload switch says it only works on the TV', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const row = page.locator('[data-focusable="setting-system-preload"]');
+  await expect(row).toHaveAttribute('aria-disabled', 'true');
+  await expect(row.locator('small')).toHaveText('Available on the TV.');
+  // aria-disabled keeps Playwright's click waiting; the remote's OK still reaches the row.
+  await row.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status').filter({ hasText: 'Available on the TV.' })).toBeVisible();
 });

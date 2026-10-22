@@ -1,91 +1,134 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { visibleInputs } from '../src/inputs.ts';
+import {
+  applyInputNames,
+  inputHeading,
+  launcherInputs,
+  newLauncherId,
+  validLauncherId,
+  visibleInputs,
+} from '../src/inputs.ts';
+import { inputKind, normalizeTargets } from '../src/catalog.ts';
+import { parsePack, resolveInputIcon } from '../src/icnl.ts';
 import { parsePreferences } from '../src/storage.ts';
 import type { TVInput } from '../src/types.ts';
 
-const inputs: TVInput[] = [
-  { id: 'com.webos.app.hdmi1', title: 'Console', port: 'HDMI 1', kind: 'console', connected: true },
-  {
-    id: 'com.webos.app.hdmi2',
-    title: 'Streamer',
-    port: 'HDMI 2',
-    kind: 'streamer',
-    connected: false,
-  },
-  { id: 'com.webos.app.hdmi3', title: 'HDMI 3', port: 'HDMI 3', kind: 'hdmi', connected: null },
-  {
-    id: 'com.webos.app.hdmi4',
-    title: 'Computer',
-    port: 'HDMI 4',
-    kind: 'computer',
-    connected: true,
-  },
-];
-
-test('inputs default to Auto and require a confirmed connection', () => {
-  const preferences = parsePreferences('{"version":1,"favorites":[]}');
-  assert.deepEqual(preferences.inputVisibility, {});
-  assert.deepEqual(
-    visibleInputs(inputs, preferences.inputVisibility).map((input) => input.port),
-    ['HDMI 1', 'HDMI 4'],
-  );
-  assert.deepEqual(preferences.favorites, []);
+const hdmi = (id: string, title: string, connected: boolean | null): TVInput => ({
+  id: `com.webos.app.${id}`,
+  title,
+  port: `HDMI ${id.slice(-1)}`,
+  connected,
+  kind: inputKind(title),
 });
 
-test('On includes disconnected and unknown inputs, Off excludes connected inputs, and Auto follows refreshes', () => {
-  const visibility = {
-    'com.webos.app.hdmi1': 'off',
-    'com.webos.app.hdmi2': 'on',
-    'com.webos.app.hdmi3': 'on',
-    'com.webos.app.hdmi4': 'auto',
-  } as const;
-  assert.deepEqual(
-    visibleInputs(inputs, visibility).map((input) => input.port),
-    ['HDMI 2', 'HDMI 3', 'HDMI 4'],
-  );
-  const refreshed = inputs.map((input) => ({
-    ...input,
-    title: 'Renamed',
-    connected: !input.connected,
-  }));
-  assert.deepEqual(
-    visibleInputs(refreshed, visibility).map((input) => input.port),
-    ['HDMI 2', 'HDMI 3'],
-  );
-  assert.equal(inputs[0].title, 'Console');
-});
-
-test('all enabled physical inputs are retained in inventory order', () => {
-  const visibility = Object.fromEntries(inputs.map((input) => [input.id, 'on' as const]));
-  assert.deepEqual(visibleInputs(inputs, visibility), inputs);
-});
-
-test('saved input modes are validated without losing choices for temporarily missing inputs', () => {
+test('input names, icons and launchers survive storage only when valid', () => {
   const preferences = parsePreferences(
     JSON.stringify({
       version: 1,
-      inputVisibility: {
-        'com.webos.app.hdmi1': 'on',
-        'com.webos.app.hdmi2': 'off',
-        'com.webos.app.hdmi3': 'auto',
-        'com.webos.app.hdmi9': 'on',
-        'com.webos.app.hdmi4': true,
-        'com.webos.app.hdmi5': 'sometimes',
-        'bad;id': 'on',
-      },
+      inputNames: { 'com.webos.app.hdmi1': '  Switch 2 ', 'com.webos.app.hdmi2': '', "x'": 'bad' },
+      inputIcons: { 'com.webos.app.hdmi1': 'pack/switch', 'com.webos.app.hdmi2': 'tv' },
+      launchers: [
+        { id: 'launcher-abc123', title: 'AirPlay', icon: 'pack/airplay', target: 'airplay' },
+        { id: 'launcher-abc123', title: 'Duplicate', icon: '', target: 'airplay' },
+        { id: 'launcher-def456', title: '', icon: 'nope', target: 'com.webos.app.miracast' },
+        { id: 'bad', title: 'Bad', icon: '', target: 'airplay' },
+        { id: 'launcher-ghi789', title: 'No target', icon: '', target: "x'" },
+      ],
     }),
   );
-  assert.deepEqual(preferences.inputVisibility, {
-    'com.webos.app.hdmi1': 'on',
-    'com.webos.app.hdmi2': 'off',
-    'com.webos.app.hdmi3': 'auto',
-    'com.webos.app.hdmi9': 'on',
+  assert.deepEqual(preferences.inputNames, { 'com.webos.app.hdmi1': 'Switch 2' });
+  assert.deepEqual(preferences.inputIcons, { 'com.webos.app.hdmi1': 'pack/switch' });
+  assert.deepEqual(preferences.launchers, [
+    { id: 'launcher-abc123', title: 'AirPlay', icon: 'pack/airplay', target: 'airplay' },
+    {
+      id: 'launcher-def456',
+      title: 'com.webos.app.miracast',
+      icon: '',
+      target: 'com.webos.app.miracast',
+    },
+  ]);
+  assert.deepEqual(parsePreferences(JSON.stringify({ version: 1 })).launchers, []);
+  assert.ok(validLauncherId(newLauncherId()));
+});
+
+test('custom names replace the TV label and re-guess the device kind', () => {
+  const inputs = [hdmi('hdmi1', 'HDMI 1', true), hdmi('hdmi2', 'Apple TV', true)];
+  const named = applyInputNames(inputs, { 'com.webos.app.hdmi1': 'Switch 2' });
+  assert.deepEqual(
+    named.map((input) => [input.title, input.kind, input.named ?? false, inputHeading(input)]),
+    [
+      ['Switch 2', 'console', true, 'Switch 2'],
+      ['Apple TV', 'streamer', false, 'HDMI 2'],
+    ],
+  );
+  assert.equal(named[1], inputs[1]);
+});
+
+test('launchers become Home cards that open their target and hide only when switched off', () => {
+  const launchers = [
+    { id: 'launcher-aaaaaa', title: 'AirPlay', icon: '', target: 'airplay' },
+    { id: 'launcher-bbbbbb', title: 'Mirror', icon: '', target: 'com.webos.app.miracast' },
+  ];
+  const cards = launcherInputs(launchers, [{ id: 'airplay', title: 'AirPlay on LG' }]);
+  assert.deepEqual(
+    cards.map((card) => [card.id, card.title, card.port, card.kind, card.target]),
+    [
+      ['launcher-aaaaaa', 'AirPlay', 'AirPlay on LG', 'launcher', 'airplay'],
+      ['launcher-bbbbbb', 'Mirror', 'com.webos.app.miracast', 'launcher', 'com.webos.app.miracast'],
+    ],
+  );
+  const inputs = [hdmi('hdmi1', 'HDMI 1', true), hdmi('hdmi2', 'HDMI 2', false), ...cards];
+  assert.deepEqual(
+    visibleInputs(inputs, { 'launcher-bbbbbb': 'off', 'com.webos.app.hdmi2': 'on' }).map(
+      (input) => input.id,
+    ),
+    ['com.webos.app.hdmi1', 'com.webos.app.hdmi2', 'launcher-aaaaaa'],
+  );
+  assert.equal(visibleInputs(cards, { 'launcher-aaaaaa': 'auto' }).length, 2);
+});
+
+test('launch targets include hidden system apps but never LumiOS itself', () => {
+  const targets = normalizeTargets([
+    { id: 'netflix', title: 'Netflix', visible: true },
+    { id: 'airplay', title: 'AirPlay', visible: false },
+    { id: 'com.dezik.lumios', title: 'LumiOS', visible: true },
+    { id: 'com.webos.app.miracast', title: '', visible: false },
+    { id: "bad'", title: 'Bad' },
+    { id: 'netflix', title: 'Duplicate' },
+  ]);
+  assert.deepEqual(targets, [
+    { id: 'airplay', title: 'AirPlay' },
+    { id: 'com.webos.app.miracast', title: 'com.webos.app.miracast' },
+    { id: 'netflix', title: 'Netflix' },
+  ]);
+});
+
+test('input icons come from the user choice or a pack entry listing the input', () => {
+  const encode = (text: string) => new TextEncoder().encode(text);
+  const pack = parsePack('glyphs', {
+    'pack.json': encode(
+      JSON.stringify({
+        format: 'icnl/1',
+        name: 'Glyphs',
+        icons: {
+          switch: { kind: 'glyph', inputs: ['com.webos.app.hdmi1'] },
+          console: { kind: 'glyph' },
+        },
+      }),
+    ),
+    'icons/switch/icon.svg': encode('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+    'icons/console/icon.svg': encode('<svg xmlns="http://www.w3.org/2000/svg"/>'),
   });
-  for (const inputVisibility of [null, [], 'on', 1]) {
-    assert.deepEqual(
-      parsePreferences(JSON.stringify({ version: 1, inputVisibility })).inputVisibility,
-      {},
-    );
-  }
+  assert.equal(resolveInputIcon('com.webos.app.hdmi1', [pack], {})?.icon.meta.slug, 'switch');
+  assert.equal(resolveInputIcon('com.webos.app.hdmi2', [pack], {}), undefined);
+  assert.equal(
+    resolveInputIcon('com.webos.app.hdmi1', [pack], { 'com.webos.app.hdmi1': 'glyphs/console' })
+      ?.icon.meta.slug,
+    'console',
+  );
+  assert.equal(
+    resolveInputIcon('com.webos.app.hdmi1', [pack], { 'com.webos.app.hdmi1': 'glyphs/missing' })
+      ?.icon.meta.slug,
+    'switch',
+  );
 });

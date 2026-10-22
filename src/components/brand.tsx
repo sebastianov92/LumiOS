@@ -1,6 +1,5 @@
 import { AppWindow, Coffee, Gamepad2, Globe, MonitorPlay, Settings2, Tv } from 'lucide-react';
-import type { TVApp } from '../types';
-import appIcons from '../app-icons.json';
+import type { ResolvedIcon, TVApp } from '../types';
 import { useTranslation } from '../i18n';
 
 const logos: Record<string, string> = {
@@ -15,25 +14,16 @@ const logos: Record<string, string> = {
   'das-erste': 'das-erste',
 };
 
-export function Brand({ app }: { app: TVApp }) {
+// Icon priority: an icon pack entry → the app's own icon read from the TV → built-in brand
+// artwork → a generic symbol with the app name.
+export function Brand({ app, icon }: { app: TVApp; icon?: ResolvedIcon }) {
   const { t } = useTranslation();
-  const logo = logos[app.brand];
-  if (logo)
+  if (icon)
     return (
-      <img
-        className={`brand-logo brand-logo-${app.brand}`}
-        src={`./logos/${logo}.svg`}
-        alt=""
-        draggable={false}
-      />
-    );
-  const installedIcon = (appIcons as Record<string, string>)[app.id];
-  if (installedIcon)
-    return (
-      <span className="brand-installed">
+      <span className={icon.source === 'pack' ? 'brand-pack' : 'brand-installed'}>
         <img
-          className="brand-installed-icon"
-          src={installedIcon}
+          className={icon.source === 'pack' ? 'brand-pack-icon' : 'brand-installed-icon'}
+          src={icon.url}
           alt=""
           draggable={false}
           onError={(event) => {
@@ -44,6 +34,16 @@ export function Brand({ app }: { app: TVApp }) {
         />
         <span hidden>{app.title}</span>
       </span>
+    );
+  const logo = logos[app.brand];
+  if (logo)
+    return (
+      <img
+        className={`brand-logo brand-logo-${app.brand}`}
+        src={`./logos/${logo}.svg`}
+        alt=""
+        draggable={false}
+      />
     );
   switch (app.brand) {
     case 'live-tv':

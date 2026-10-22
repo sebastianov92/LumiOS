@@ -7,12 +7,12 @@ import {
   normalizeInputs,
   sortApps,
 } from '../src/catalog.ts';
-import { parsePreferences } from '../src/storage.ts';
+import { detectLanguage, parsePreferences } from '../src/storage.ts';
 import { nextFocus, type FocusRect } from '../src/navigation.ts';
 
 test('inventory excludes internal/invisible apps and de-duplicates third-party apps', () => {
   const apps = normalizeApps([
-    { id: 'com.luma.launcher', title: 'Luma', visible: true },
+    { id: 'com.dezik.lumios', title: 'LumiOS', visible: true },
     { id: 'com.webos.app.home', title: 'Home', visible: true },
     {
       id: 'com.webos.app.livetv',
@@ -143,4 +143,13 @@ test('favorites sort first in saved order, with remaining apps alphabetical and 
     sortApps(apps, []).map((app) => app.title),
     ['Alpha', 'Beta', 'Charlie', 'Zulu'],
   );
+});
+
+test('language preference accepts Spanish and falls back to the detected default', () => {
+  assert.equal(parsePreferences(JSON.stringify({ version: 1, language: 'es' })).language, 'es');
+  assert.equal(parsePreferences(JSON.stringify({ version: 1, language: 'fr' })).language, 'en');
+  assert.equal(detectLanguage('es-EC'), 'es');
+  assert.equal(detectLanguage('de-AT'), 'de');
+  assert.equal(detectLanguage('pt-BR'), 'en');
+  assert.equal(detectLanguage(undefined as unknown as string), 'en');
 });

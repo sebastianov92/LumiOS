@@ -1,7 +1,56 @@
-import { Gamepad2, HdmiPort, Monitor, Tv, Usb } from 'lucide-react';
-import type { TVInput } from '../types';
+import {
+  Airplay,
+  Bluetooth,
+  Cast,
+  Gamepad2,
+  HdmiPort,
+  LayoutGrid,
+  Monitor,
+  Rocket,
+  Tv,
+  Usb,
+} from 'lucide-react';
+import type { ResolvedIcon, TVInput } from '../types';
 
-export function ConnectionIcon({ input }: { input: TVInput }) {
+const launcherSymbols: Record<string, typeof Rocket> = {
+  airplay: Airplay,
+  'com.webos.app.miracast': Cast,
+  'com.webos.app.btspeakerapp': Bluetooth,
+  'com.webos.app.homeconnect': LayoutGrid,
+  'com.webos.app.livetv': Tv,
+};
+
+// A pack icon wins; glyphs are masked so they take the card colour, tiles fill the art box.
+export function PackInputIcon({ icon }: { icon: ResolvedIcon }) {
+  if (icon.source !== 'pack') return null;
+  if (icon.kind === 'glyph')
+    return (
+      <span
+        className="input-glyph"
+        data-icnl={icon.ref}
+        data-connection-icon="pack"
+        style={{ WebkitMaskImage: `url("${icon.url}")`, maskImage: `url("${icon.url}")` }}
+        aria-hidden="true"
+      />
+    );
+  return (
+    <img
+      className="input-tile"
+      src={icon.url}
+      alt=""
+      draggable={false}
+      data-icnl={icon.ref}
+      data-connection-icon="pack"
+    />
+  );
+}
+
+export function ConnectionIcon({ input, icon }: { input: TVInput; icon?: ResolvedIcon }) {
+  if (icon?.source === 'pack') return <PackInputIcon icon={icon} />;
+  if (input.kind === 'launcher') {
+    const Symbol = launcherSymbols[input.target ?? ''] ?? Rocket;
+    return <Symbol strokeWidth={1.5} aria-hidden="true" data-connection-icon="launcher" />;
+  }
   const name = `${input.title} ${input.port} ${input.id}`;
   if (/play\s*station|(?:^|[\s._-])ps[1-5](?:$|[\s._-])/i.test(name)) {
     return (

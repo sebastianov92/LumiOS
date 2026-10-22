@@ -1,4 +1,4 @@
-// Inspect the actual IPK, and normalize only Luma-owned entries. The webOS CLI
+// Inspect the actual IPK, and normalize only LumiOS-owned entries. The webOS CLI
 // emits world-writable directories; boot scripts need app-owned 0755 parents.
 import { gunzipSync, gzipSync } from 'node:zlib';
 
@@ -53,7 +53,7 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
   const tar = gunzipSync(member.data);
   const files = entries(tar);
   const owned = files.filter((file) => file.name.split('/').includes(manifest.id));
-  if (!owned.length) throw new Error('The IPK contains no Luma app directory.');
+  if (!owned.length) throw new Error('The IPK contains no LumiOS app directory.');
   const appinfo = owned.find((file) => file.name.endsWith('/appinfo.json'));
   const actual = appinfo && JSON.parse(appinfo.data.toString());
   if (actual?.id !== manifest.id || actual?.version !== manifest.version)
@@ -69,6 +69,7 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
     manifest.icon,
     manifest.largeIcon,
     'autostart.sh',
+    'preload.js',
     'fonts/inter-latin.woff2',
     'wallpapers/dunes.jpg',
     'wallpapers/midnight.svg',
@@ -115,7 +116,7 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
     if (entry.data.length % 2) parts.push(Buffer.from('\n'));
   }
   console.log(
-    `Verified IPK contents: ${owned.length} Luma entries; app metadata, assets and modes checked.`,
+    `Verified IPK contents: ${owned.length} LumiOS entries; app metadata, assets and modes checked.`,
   );
   return Buffer.concat(parts);
 }

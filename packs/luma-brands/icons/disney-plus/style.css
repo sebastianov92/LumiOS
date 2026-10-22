@@ -1,0 +1,8 @@
+.icon {
+  background: radial-gradient(ellipse at 50% 110%, #16466b, #0b244c 60%, #091936);
+}
+.icon img {
+  width: 72%;
+  height: 6.6rem;
+  filter: brightness(0) invert(0.96);
+}

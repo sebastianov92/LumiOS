@@ -1,8 +1,7 @@
-@import './icon-colours.css';
 @import url('./fonts.css');
 
 :root {
-  font-family: 'Luma Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'LumiOS Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: clamp(10px, 0.833333333vw, 20px);
   color: #f5f5f5;
   background: #17191c;
@@ -88,7 +87,7 @@ button svg {
   width: 1.4rem;
   height: 1.4rem;
 }
-.luma {
+.lumios {
   position: relative;
   isolation: isolate;
   height: 100vh;
@@ -1590,4 +1589,45 @@ button svg {
 }
 .app-face:has(.brand-installed)::after {
   background: none;
+}
+
+/* Icon-pack tiles: a pack styles its own faces through scoped CSS; this is the default face. */
+.app-face[data-icnl] {
+  background: linear-gradient(145deg, #2b2f36, #15171b);
+}
+.brand-pack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.brand-pack-icon {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* Pack glyphs on input cards: monochrome SVG masks take the card's text colour. */
+.input-glyph {
+  width: 2.2rem;
+  height: 2.2rem;
+  background: currentColor;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+}
+.input-tile {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.input-launcher .input-art {
+  color: #ecebff;
+  background: linear-gradient(145deg, #8c7cff47, #6c4dff1f);
 }

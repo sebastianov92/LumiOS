@@ -1,4 +1,12 @@
-import { demoApps, demoInputs, normalizeApps, normalizeInputs, validAppId } from './catalog';
+import {
+  demoApps,
+  demoInputs,
+  demoTargets,
+  normalizeApps,
+  normalizeInputs,
+  normalizeTargets,
+  validAppId,
+} from './catalog';
 import type { Inventory, NativeBridge } from './types';
 
 const active = new Set<NativeBridge>();
@@ -12,6 +20,7 @@ export function nativeCall(
   uri: string,
   payload: Record<string, unknown>,
   timeout = 6500,
+  limit = 2 * 1024 * 1024,
 ): Promise<Record<string, any>> {
   return new Promise((resolve, reject) => {
     const Bridge = window.PalmServiceBridge ?? window.webOSServiceBridge;
@@ -52,7 +61,7 @@ export function nativeCall(
       active.add(bridge);
       bridge.onservicecallback = (raw) => {
         try {
-          if (typeof raw !== 'string' || raw.length > 2 * 1024 * 1024)
+          if (typeof raw !== 'string' || raw.length > limit)
             throw new Error('The TV returned an unreadable response.');
           const value = JSON.parse(raw);
           if (!value || typeof value !== 'object' || Array.isArray(value))
@@ -107,10 +116,14 @@ export async function loadInventory(): Promise<Inventory> {
     return {
       apps: demoApps,
       inputs: demoInputs,
+      targets: demoTargets,
       warnings: [],
     };
   const [apps, inputs] = await Promise.allSettled([
-    inventoryRead(`${manager}listApps`, 'apps').then(normalizeApps),
+    inventoryRead(`${manager}listApps`, 'apps').then((raw) => ({
+      apps: normalizeApps(raw),
+      targets: normalizeTargets(raw),
+    })),
     inventoryRead('luna://com.webos.service.eim/getAllInputStatus', 'devices').then(
       normalizeInputs,
     ),
@@ -120,7 +133,8 @@ export async function loadInventory(): Promise<Inventory> {
       `Couldn’t load your apps. ${apps.reason instanceof Error ? apps.reason.message : 'Check Homebrew Channel’s root status.'}`,
     );
   return {
-    apps: apps.value,
+    apps: apps.value.apps,
+    targets: apps.value.targets,
     inputs: inputs.status === 'fulfilled' ? inputs.value : [],
     warnings:
       inputs.status === 'rejected' ? ['Inputs couldn’t be loaded. Refresh to try again.'] : [],
@@ -140,4 +154,26 @@ export async function launchApp(id: string): Promise<void> {
 export function platformBack(): void {
   const system = window.PalmSystem ?? window.webOSSystem;
   system?.platformBack?.();
+}
+
+export function decodeBase64(text: string): Uint8Array {
+  const binary = atob(text.replace(/\s+/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+// Run a root shell command through Homebrew Channel and return its raw stdout. The service
+// buffers at most about 1 MiB of output, so callers keep each command's output small.
+export async function execBytes(command: string, timeout = 20000): Promise<Uint8Array> {
+  const envelope = await nativeCall(
+    'luna://org.webosbrew.hbchannel.service/exec',
+    { command },
+    timeout,
+    8 * 1024 * 1024,
+  );
+  if (typeof envelope.stdoutBytes === 'string') return decodeBase64(envelope.stdoutBytes);
+  if (typeof envelope.stdoutString === 'string')
+    return new TextEncoder().encode(envelope.stdoutString);
+  throw new Error('Homebrew Channel returned no output.');
 }

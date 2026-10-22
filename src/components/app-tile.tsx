@@ -1,12 +1,13 @@
 import { memo, useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, Heart, LoaderCircle } from 'lucide-react';
 import { Brand } from './brand';
-import type { TVApp } from '../types';
+import type { ResolvedIcon, TVApp } from '../types';
 import { useTranslation } from '../i18n';
 
 interface Props {
   app: TVApp;
   prefix: string;
+  icon?: ResolvedIcon;
   pinned?: boolean;
   launching?: boolean;
   reordering?: boolean;
@@ -18,6 +19,7 @@ interface Props {
 export const AppTile = memo(function AppTile({
   app,
   prefix,
+  icon,
   pinned,
   launching,
   reordering,
@@ -75,8 +77,12 @@ export const AppTile = memo(function AppTile({
         onLaunch(app);
       }}
     >
-      <span className={`app-face brand-${app.brand}`}>
-        <Brand app={app} />
+      <span
+        className={`app-face brand-${app.brand}`}
+        data-icnl={icon?.source === 'pack' ? icon.ref : undefined}
+        style={icon?.source === 'tv' ? { background: icon.color } : undefined}
+      >
+        <Brand app={app} icon={icon} />
         {pinned ? (
           <Heart
             className="favorite-badge"

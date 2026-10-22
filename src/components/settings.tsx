@@ -8,22 +8,68 @@ import {
   RefreshCw,
   Thermometer,
   Type,
+  Zap,
 } from 'lucide-react';
 import { WeatherSettings } from './weather-settings';
-import { InputSettings, InputVisibilitySettings } from './input-settings';
-import type { Language, Preferences, TVInput } from '../types';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  InputDetail,
+  InputSettings,
+  LauncherDetail,
+  orderTargets,
+  TargetPicker,
+} from './input-settings';
+import {
+  AppIconPicker,
+  IconOptionList,
+  IconSettings,
+  PackDetail,
+  packIconOptions,
+  type IconDescription,
+} from './icon-settings';
+import type {
+  AppTarget,
+  Language,
+  Launcher,
+  Preferences,
+  ResolvedIcon,
+  TVApp,
+  TVInput,
+} from '../types';
+import type { PackLibrary } from '../use-packs';
+import type { StoredPack } from '../packs';
+import type { SystemPreload } from '../preload';
+import { isTV } from '../bridge';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { wallpapers, wallpaperThumbnail } from '../wallpapers';
 import { useTranslation, wallpaperLabel } from '../i18n';
-import { getInputVisibility } from '../inputs';
+import { getInputVisibility, inputHeading, newLauncherId } from '../inputs';
+import { findIcon } from '../icnl';
 
-type SettingsSection = 'interface' | 'background' | 'weather' | 'inputs';
+const languageOptions = [
+  ['en', 'english'],
+  ['de', 'german'],
+  ['zh', 'chinese'],
+  ['es', 'spanish'],
+] as const;
+const languageNames = Object.fromEntries(languageOptions) as Record<
+  Language,
+  (typeof languageOptions)[number][1]
+>;
+
+type SettingsSection = 'interface' | 'background' | 'weather' | 'inputs' | 'icons';
 type SettingsSubpage =
   | 'language'
   | 'weather-location'
   | 'temperature'
   | 'clock-format'
-  | 'input-visibility';
+  | 'input'
+  | 'input-icon'
+  | 'launcher'
+  | 'launcher-icon'
+  | 'launcher-target'
+  | 'add-launcher'
+  | 'pack'
+  | 'app-icon';
 
 const subpageTitles = {
   language: 'language',
@@ -46,8 +92,20 @@ interface Props {
   inputs: TVInput[];
   inputsLoading: boolean;
   inputsWarning?: string;
+  launchers: TVInput[];
+  targets: AppTarget[];
+  inputIconFor: (input: TVInput) => ResolvedIcon | undefined;
+  apps: TVApp[];
+  packs: PackLibrary;
+  describeIcon: (app: TVApp) => IconDescription;
   onUpdate: (patch: Partial<Preferences>) => void;
   onRefresh: () => void;
+  onImportUsb: () => void;
+  onReloadPacks: () => void;
+  onRemovePack: (pack: StoredPack) => Promise<boolean>;
+  onNotify: (message: string) => void;
+  systemPreload: SystemPreload;
+  onToggleSystemPreload: () => void;
 }
 
 export function Settings({
@@ -55,8 +113,20 @@ export function Settings({
   inputs,
   inputsLoading,
   inputsWarning,
+  launchers,
+  targets,
+  inputIconFor,
+  apps,
+  packs,
+  describeIcon,
   onUpdate,
   onRefresh,
+  onImportUsb,
+  onReloadPacks,
+  onRemovePack,
+  onNotify,
+  systemPreload,
+  onToggleSystemPreload,
 }: Props) {
   const { t, language } = useTranslation();
   const galleryColumns = useSyncExternalStore(subscribeGalleryLayout, getGalleryColumns);
@@ -64,13 +134,47 @@ export function Settings({
   const [subpage, setSubpage] = useState<SettingsSubpage | null>(null);
   const [selectedInputId, setSelectedInputId] = useState<string | null>(null);
   const selectedInput = inputs.find((input) => input.id === selectedInputId);
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(null);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const selectedPack = packs.packs.find((pack) => pack.id === selectedPackId);
+  const selectedApp = apps.find((app) => app.id === selectedAppId);
+  const [selectedLauncherId, setSelectedLauncherId] = useState<string | null>(null);
+  const selectedLauncher = preferences.launchers.find((item) => item.id === selectedLauncherId);
+  const selectedLauncherCard = launchers.find((item) => item.id === selectedLauncherId);
+  // A child subpage (icon or target picker) returns to its parent subpage on Back.
+  const [subpageParent, setSubpageParent] = useState<{
+    subpage: SettingsSubpage;
+    focus: string;
+  } | null>(null);
   const subpageTitle =
-    subpage === 'input-visibility'
-      ? (selectedInput?.port ?? t('inputs'))
-      : subpage
-        ? t(subpageTitles[subpage])
-        : '';
+    subpage === 'input'
+      ? selectedInput
+        ? inputHeading(selectedInput)
+        : t('inputs')
+      : subpage === 'input-icon' || subpage === 'launcher-icon'
+        ? t('inputIcon')
+        : subpage === 'launcher'
+          ? (selectedLauncher?.title ?? t('launcher'))
+          : subpage === 'launcher-target' || subpage === 'add-launcher'
+            ? t('chooseTarget')
+            : subpage === 'pack'
+              ? (selectedPack?.name ?? t('iconPacks'))
+              : subpage === 'app-icon'
+                ? (selectedApp?.title ?? t('appIcons'))
+                : subpage
+                  ? t(subpageTitles[subpage])
+                  : '';
   const [subpageReturnFocus, setSubpageReturnFocus] = useState('setting-language');
+  const updateLauncher = (id: string, patch: Partial<Launcher>) =>
+    onUpdate({
+      launchers: preferences.launchers.map((item) =>
+        item.id === id ? { ...item, ...patch } : item,
+      ),
+    });
+  const packIconTitle = (icon: ResolvedIcon | undefined, fallback: string) =>
+    icon?.source === 'pack'
+      ? (findIcon(packs.packs, icon.ref)?.icon.meta.title ?? fallback)
+      : fallback;
   const chooseLanguage = (next: Language) => {
     onUpdate({ language: next });
     setSubpage(null);
@@ -90,28 +194,51 @@ export function Settings({
         return 'setting-clock-format';
       case 'weather-location':
         return 'setting-weather-location';
-      case 'input-visibility':
-        return 'settings-section-inputs';
+      case 'input':
+        return `setting-input-${selectedInputId}`;
+      case 'input-icon':
+        return 'input-icon';
+      case 'launcher':
+        return `setting-launcher-${selectedLauncherId}`;
+      case 'launcher-icon':
+        return 'launcher-icon';
+      case 'launcher-target':
+        return 'launcher-target';
+      case 'add-launcher':
+        return 'setting-add-launcher';
+      case 'pack':
+        return `setting-pack-${selectedPackId}`;
+      case 'app-icon':
+        return `setting-app-icon-${selectedAppId}`;
     }
   };
-  const openSubpage = (next: SettingsSubpage, focusable: string, returnFocus?: string) => {
+  const openSubpage = (
+    next: SettingsSubpage,
+    focusable: string,
+    returnFocus?: string,
+    parent?: { subpage: SettingsSubpage; focus: string },
+  ) => {
     setSubpage(next);
-    setSubpageReturnFocus(returnFocus ?? subpageReturnFocusId(next));
+    setSubpageParent(parent ?? null);
+    if (!parent) setSubpageReturnFocus(returnFocus ?? subpageReturnFocusId(next));
     requestAnimationFrame(() => {
+      // Focus the entry option unless input already moved focus into the subpage.
+      if (document.activeElement?.closest('[data-settings-subpage]')) return;
       document
         .querySelector<HTMLElement>(`[data-focusable="${focusable}"]`)
         ?.focus({ preventScroll: true });
     });
   };
-  const closeSubpage = () => {
-    const focusable = subpageReturnFocus;
-    setSubpage(null);
+  const closeSubpage = useCallback(() => {
+    const focusable = subpageParent?.focus ?? subpageReturnFocus;
+    setSubpage(subpageParent?.subpage ?? null);
+    setSubpageParent(null);
     requestAnimationFrame(() =>
       document
         .querySelector<HTMLElement>(`[data-focusable="${focusable}"]`)
         ?.focus({ preventScroll: true }),
     );
-  };
+  }, [subpageParent, subpageReturnFocus]);
   const chooseTemperature = (unit: Preferences['temperatureUnit']) => {
     onUpdate({ temperatureUnit: unit });
     setSubpage(null);
@@ -156,18 +283,12 @@ export function Settings({
           ?.focus({ preventScroll: true });
         return;
       }
-      const focusable = subpageReturnFocus;
-      setSubpage(null);
-      requestAnimationFrame(() =>
-        document
-          .querySelector<HTMLElement>(`[data-focusable="${focusable}"]`)
-          ?.focus({ preventScroll: true }),
-      );
+      closeSubpage();
     };
     document.addEventListener('keydown', onBack);
     return () => document.removeEventListener('keydown', onBack);
-  }, [section, subpage, subpageReturnFocus]);
-  const sectionOrder = ['interface', 'background', 'weather', 'inputs'] as const;
+  }, [section, subpage, closeSubpage]);
+  const sectionOrder = ['interface', 'background', 'weather', 'inputs', 'icons'] as const;
   const sectionTitle = (id: (typeof sectionOrder)[number]) => t(id);
   const enterSection = (next: (typeof sectionOrder)[number]) => {
     setSection(next);
@@ -182,12 +303,14 @@ export function Settings({
     background: `wallpaper-${preferences.wallpaper}`,
     weather: 'setting-show-weather',
     inputs: inputs[0] ? `setting-input-${inputs[0].id}` : 'setting-inputs-refresh',
+    icons: packs.packs[0] ? `setting-pack-${packs.packs[0].id}` : 'setting-icons-usb',
   };
   const sectionNext = {
     interface: 'background',
     background: 'weather',
     weather: 'inputs',
-    inputs: 'interface',
+    inputs: 'icons',
+    icons: 'interface',
   };
   return (
     <section className="settings-page" aria-label={t('settingsRegion')}>
@@ -374,15 +497,7 @@ export function Settings({
                   <span>
                     <strong>{t('language')}</strong>
                   </span>
-                  <span className="setting-value">
-                    {t(
-                      preferences.language === 'en'
-                        ? 'english'
-                        : preferences.language === 'de'
-                          ? 'german'
-                          : 'chinese',
-                    )}
-                  </span>
+                  <span className="setting-value">{t(languageNames[preferences.language])}</span>
                   <ChevronRight aria-hidden="true" />
                 </button>
               </div>
@@ -391,11 +506,43 @@ export function Settings({
                   className="setting-row"
                   data-focusable="setting-refresh"
                   data-focus-up="setting-language"
+                  data-focus-down="setting-system-preload"
                   onClick={onRefresh}
                 >
                   <RefreshCw />
                   <span>
                     <strong>{t('refreshApps')}</strong>
+                  </span>
+                </button>
+              </div>
+              <h2 className="settings-group-title">{t('startup')}</h2>
+              <div className="settings-group">
+                <button
+                  className="setting-row"
+                  role="switch"
+                  aria-checked={systemPreload.enabled}
+                  aria-disabled={
+                    systemPreload.available !== true || systemPreload.busy || undefined
+                  }
+                  data-focusable="setting-system-preload"
+                  data-focus-up="setting-refresh"
+                  onClick={onToggleSystemPreload}
+                >
+                  <Zap />
+                  <span>
+                    <strong>{t('systemPreload')}</strong>
+                    <small>
+                      {systemPreload.available === true
+                        ? t('systemPreloadHint')
+                        : systemPreload.available === null
+                          ? t('systemPreloadWorking')
+                          : isTV()
+                            ? t('systemPreloadUnavailable')
+                            : t('tvOnlyHint')}
+                    </small>
+                  </span>
+                  <span className="setting-state" aria-hidden="true">
+                    {t(systemPreload.enabled ? 'stateOn' : 'stateOff')}
                   </span>
                 </button>
               </div>
@@ -479,16 +626,53 @@ export function Settings({
           {!subpage && section === 'inputs' ? (
             <InputSettings
               inputs={inputs}
+              launchers={launchers}
               visibility={preferences.inputVisibility}
               loading={inputsLoading}
               warning={inputsWarning}
+              iconFor={inputIconFor}
               onRefresh={onRefresh}
               onOpen={(input) => {
                 setSelectedInputId(input.id);
                 openSubpage(
-                  'input-visibility',
+                  'input',
                   `input-visibility-option-${getInputVisibility(input.id, preferences.inputVisibility)}`,
                   `setting-input-${input.id}`,
+                );
+              }}
+              onOpenLauncher={(launcher) => {
+                setSelectedLauncherId(launcher.id);
+                openSubpage('launcher', 'launcher-name', `setting-launcher-${launcher.id}`);
+              }}
+              onAddLauncher={() => {
+                const { suggested, rest } = orderTargets(targets);
+                const first = suggested[0] ?? rest[0];
+                openSubpage(
+                  'add-launcher',
+                  first ? `target-option-${first.id}` : 'nav-settings',
+                  'setting-add-launcher',
+                );
+              }}
+            />
+          ) : null}
+          {!subpage && section === 'icons' ? (
+            <IconSettings
+              packs={packs.packs}
+              loading={packs.loading}
+              apps={apps}
+              describe={describeIcon}
+              onImportUsb={onImportUsb}
+              onReload={onReloadPacks}
+              onOpenPack={(pack) => {
+                setSelectedPackId(pack.id);
+                openSubpage('pack', 'pack-remove', `setting-pack-${pack.id}`);
+              }}
+              onOpenApp={(app) => {
+                setSelectedAppId(app.id);
+                openSubpage(
+                  'app-icon',
+                  `app-icon-option-${preferences.iconOverrides[app.id] ?? 'auto'}`,
+                  `setting-app-icon-${app.id}`,
                 );
               }}
             />
@@ -503,13 +687,7 @@ export function Settings({
             >
               {subpage === 'language' ? (
                 <div className="settings-subpage-options" role="listbox" aria-label={t('language')}>
-                  {(
-                    [
-                      ['en', 'english'],
-                      ['de', 'german'],
-                      ['zh', 'chinese'],
-                    ] as const
-                  ).map(([option, label]) => (
+                  {languageOptions.map(([option, label], index) => (
                     <button
                       key={option}
                       type="button"
@@ -518,11 +696,9 @@ export function Settings({
                       className="setting-row settings-list-item"
                       data-focusable={`language-option-${option}`}
                       data-focus-up={
-                        option === 'en'
-                          ? 'nav-settings'
-                          : `language-option-${option === 'de' ? 'en' : 'de'}`
+                        index ? `language-option-${languageOptions[index - 1][0]}` : 'nav-settings'
                       }
-                      data-focus-down={`language-option-${option === 'en' ? 'de' : option === 'de' ? 'zh' : 'en'}`}
+                      data-focus-down={`language-option-${languageOptions[(index + 1) % languageOptions.length][0]}`}
                       onClick={() => chooseLanguage(option)}
                     >
                       <span>
@@ -600,14 +776,168 @@ export function Settings({
                     </button>
                   ))}
                 </div>
-              ) : subpage === 'input-visibility' && selectedInput ? (
-                <InputVisibilitySettings
+              ) : subpage === 'input' && selectedInput ? (
+                <InputDetail
                   input={selectedInput}
-                  value={getInputVisibility(selectedInput.id, preferences.inputVisibility)}
-                  onChange={(mode) => {
+                  name={preferences.inputNames[selectedInput.id] ?? ''}
+                  visibility={getInputVisibility(selectedInput.id, preferences.inputVisibility)}
+                  icon={inputIconFor(selectedInput)}
+                  iconLabel={packIconTitle(inputIconFor(selectedInput), t('iconAuto'))}
+                  onName={(name) => {
+                    const inputNames = { ...preferences.inputNames };
+                    if (name) inputNames[selectedInput.id] = name;
+                    else delete inputNames[selectedInput.id];
+                    onUpdate({ inputNames });
+                  }}
+                  onOpenIcon={() =>
+                    openSubpage(
+                      'input-icon',
+                      `input-icon-option-${preferences.inputIcons[selectedInput.id] ?? 'auto'}`,
+                      undefined,
+                      { subpage: 'input', focus: 'input-icon' },
+                    )
+                  }
+                  onVisibility={(mode) => {
                     onUpdate({
                       inputVisibility: { ...preferences.inputVisibility, [selectedInput.id]: mode },
                     });
+                    closeSubpage();
+                  }}
+                />
+              ) : subpage === 'input-icon' && selectedInput ? (
+                <IconOptionList
+                  prefix="input-icon-option"
+                  label={t('inputIcon')}
+                  options={[
+                    { id: 'auto', label: t('iconAuto') },
+                    ...packIconOptions(packs.packs, packs.urls, ['glyph', 'tile']),
+                  ]}
+                  selected={preferences.inputIcons[selectedInput.id] ?? 'auto'}
+                  onChange={(id) => {
+                    const inputIcons = { ...preferences.inputIcons };
+                    if (id === 'auto') delete inputIcons[selectedInput.id];
+                    else inputIcons[selectedInput.id] = id;
+                    onUpdate({ inputIcons });
+                    closeSubpage();
+                  }}
+                />
+              ) : subpage === 'launcher' && selectedLauncher && selectedLauncherCard ? (
+                <LauncherDetail
+                  launcher={selectedLauncherCard}
+                  visibility={
+                    getInputVisibility(selectedLauncher.id, preferences.inputVisibility) === 'off'
+                      ? 'off'
+                      : 'on'
+                  }
+                  icon={inputIconFor(selectedLauncherCard)}
+                  iconLabel={packIconTitle(inputIconFor(selectedLauncherCard), t('iconDefault'))}
+                  onName={(title) => updateLauncher(selectedLauncher.id, { title })}
+                  onOpenIcon={() =>
+                    openSubpage(
+                      'launcher-icon',
+                      `launcher-icon-option-${selectedLauncher.icon || 'default'}`,
+                      undefined,
+                      { subpage: 'launcher', focus: 'launcher-icon' },
+                    )
+                  }
+                  onOpenTarget={() =>
+                    openSubpage(
+                      'launcher-target',
+                      `target-option-${selectedLauncher.target}`,
+                      undefined,
+                      { subpage: 'launcher', focus: 'launcher-target' },
+                    )
+                  }
+                  onVisibility={(mode) => {
+                    onUpdate({
+                      inputVisibility: {
+                        ...preferences.inputVisibility,
+                        [selectedLauncher.id]: mode,
+                      },
+                    });
+                    closeSubpage();
+                  }}
+                  onDelete={() => {
+                    onUpdate({
+                      launchers: preferences.launchers.filter(
+                        (item) => item.id !== selectedLauncher.id,
+                      ),
+                    });
+                    onNotify(t('launcherDeleted', { name: selectedLauncher.title }));
+                    setSubpage(null);
+                    setSubpageParent(null);
+                    requestAnimationFrame(() =>
+                      document
+                        .querySelector<HTMLElement>('[data-focusable="setting-add-launcher"]')
+                        ?.focus({ preventScroll: true }),
+                    );
+                  }}
+                />
+              ) : subpage === 'launcher-icon' && selectedLauncher ? (
+                <IconOptionList
+                  prefix="launcher-icon-option"
+                  label={t('inputIcon')}
+                  options={[
+                    { id: 'default', label: t('iconDefault') },
+                    ...packIconOptions(packs.packs, packs.urls, ['glyph', 'tile']),
+                  ]}
+                  selected={selectedLauncher.icon || 'default'}
+                  onChange={(id) => {
+                    updateLauncher(selectedLauncher.id, { icon: id === 'default' ? '' : id });
+                    closeSubpage();
+                  }}
+                />
+              ) : subpage === 'launcher-target' && selectedLauncher ? (
+                <TargetPicker
+                  targets={targets}
+                  selected={selectedLauncher.target}
+                  onChange={(target) => {
+                    updateLauncher(selectedLauncher.id, { target: target.id });
+                    closeSubpage();
+                  }}
+                />
+              ) : subpage === 'add-launcher' ? (
+                <TargetPicker
+                  targets={targets}
+                  onChange={(target) => {
+                    const launcher: Launcher = {
+                      id: newLauncherId(),
+                      title: target.title,
+                      icon: '',
+                      target: target.id,
+                    };
+                    onUpdate({ launchers: [...preferences.launchers, launcher] });
+                    onNotify(t('launcherAdded', { name: launcher.title }));
+                    setSelectedLauncherId(launcher.id);
+                    openSubpage('launcher', 'launcher-name', `setting-launcher-${launcher.id}`);
+                  }}
+                />
+              ) : subpage === 'pack' && selectedPack ? (
+                <PackDetail
+                  pack={selectedPack}
+                  onRemove={() => {
+                    void onRemovePack(selectedPack).then((removed) => {
+                      if (!removed) return;
+                      setSubpage(null);
+                      requestAnimationFrame(() =>
+                        document
+                          .querySelector<HTMLElement>('[data-focusable="settings-section-icons"]')
+                          ?.focus({ preventScroll: true }),
+                      );
+                    });
+                  }}
+                />
+              ) : subpage === 'app-icon' && selectedApp ? (
+                <AppIconPicker
+                  app={selectedApp}
+                  packs={packs.packs}
+                  urls={packs.urls}
+                  value={preferences.iconOverrides[selectedApp.id]}
+                  onChange={(next) => {
+                    const iconOverrides = { ...preferences.iconOverrides };
+                    if (next) iconOverrides[selectedApp.id] = next;
+                    else delete iconOverrides[selectedApp.id];
+                    onUpdate({ iconOverrides });
                     closeSubpage();
                   }}
                 />

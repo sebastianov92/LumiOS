@@ -1,0 +1,33 @@
+{
+  "format": "icnl/1",
+  "name": "Luma brands",
+  "version": "1.0.0",
+  "author": "Luma contributors / Dezik",
+  "icons": {
+    "netflix": { "title": "Netflix", "apps": ["netflix"], "match": "netflix" },
+    "youtube": { "title": "YouTube", "apps": ["youtube.leanback.v4"], "match": "youtube" },
+    "apple-tv": {
+      "title": "Apple TV",
+      "apps": ["com.apple.appletv"],
+      "match": "apple.?tv|appletv"
+    },
+    "disney-plus": {
+      "title": "Disney+",
+      "apps": ["com.disney.disneyplus-prod"],
+      "match": "disney"
+    },
+    "prime-video": { "title": "Prime Video", "apps": ["amazon"], "match": "amazon|prime.?video" },
+    "jellyfin": { "title": "Jellyfin", "apps": ["org.jellyfin.webos"], "match": "jellyfin" },
+    "arte": {
+      "title": "ARTE",
+      "apps": ["com.arte.tv"],
+      "match": "(?:^|[.\\s_-])arte(?:$|[.\\s_-])"
+    },
+    "zdf": { "title": "ZDF", "apps": ["zdf"], "match": "zdf" },
+    "das-erste": {
+      "title": "Das Erste",
+      "apps": ["ard"],
+      "match": "das[\\s._-]*erste|(?:^|[.\\s_-])ard(?:$|[.\\s_-])|ardmediathek"
+    }
+  }
+}

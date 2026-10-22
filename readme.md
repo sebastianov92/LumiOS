@@ -1,161 +1,155 @@
-# Luma
+# LumiOS
 
-A modern, remote-first launcher for rooted LG webOS TVs, inspired by the clarity and feel of Apple TV.
+Launcher moderno, pensado para el control remoto, para TVs LG con webOS rooteado. Fork de [lg-luma](https://github.com/ecklf/lg-luma) (MIT) con marca y rumbo propios de Dezik.
 
 > [!NOTE]
-> Tested on **LG OLED55C57** running **webOS 26**.
+> Upstream probado en **LG OLED55C57** con **webOS 26**. LumiOS apunta a webOS 24–26 (Chromium 108+).
 
-<table>
-  <tr>
-    <td width="50%" align="center">
-      <strong>Home</strong><br>
-      <img src="docs/home.png" alt="Luma Home screen, desktop preview">
-    </td>
-    <td width="50%" align="center">
-      <strong>Apps</strong><br>
-      <img src="docs/apps.png" alt="Luma Apps library, desktop preview">
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" align="center">
-      <strong>Settings</strong><br>
-      <img src="docs/settings.png" alt="Luma Settings, desktop preview">
-    </td>
-    <td width="50%" align="center">
-      <strong>Inputs</strong><br>
-      <img src="docs/inputs.png" alt="Luma input settings, desktop preview">
-    </td>
-  </tr>
-</table>
+## Qué cambia respecto a Luma
 
-## Install
+- Marca LumiOS, id de app `com.dezik.lumios`, vendor Dezik.
+- Hoja de ruta propia (ver [PLAN.md](PLAN.md)): paquetes de iconos `.icnl` para apps y entradas, renombrar entradas, lanzadores personalizados (AirPlay, etc.) y precarga del launcher para que abra al instante.
 
-Use [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) on your rooted LG TV.
+## Instalación
 
-1. Open Homebrew Channel and check **Settings → Root status: ok**.
-2. Go to **Settings → Add repository**, enter this URL, and confirm:
+Requiere TV rooteada con [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) (**Settings → Root status: ok**).
 
-   ```text
-   https://github.com/ecklf/lg-luma/releases/latest/download/repo.json
-   ```
+### Manual por SSH
 
-3. Return to the app list, select **Luma**, and choose **Install**.
-4. Open **Luma** from your TV's apps.
-
-### Manual installation
-
-Download the `.ipk` from the [latest release](https://github.com/ecklf/lg-luma/releases/latest). Open [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop), connect to your TV's IP address on port `22` as `root`, and install the downloaded package.
-
-You can also install over SSH. Replace `TV_IP` with your TV's address and use the filename you downloaded:
+Genera el paquete y cópialo a la TV (reemplaza `TV_IP`):
 
 ```sh
-scp -O com.luma.launcher_1.1.1_all.ipk root@TV_IP:/tmp/luma.ipk
+pnpm run package
+scp -O dist/com.dezik.lumios_1.1.1_all.ipk root@TV_IP:/tmp/lumios.ipk
 ssh root@TV_IP
 ```
 
-Then run in the TV's root shell:
+En la shell root de la TV:
 
 ```sh
 luna-send -i luna://com.webos.appInstallService/dev/install \
-  '{"id":"com.luma.launcher","ipkUrl":"/tmp/luma.ipk","subscribe":true}'
+  '{"id":"com.dezik.lumios","ipkUrl":"/tmp/lumios.ipk","subscribe":true}'
 ```
 
-Wait for the installation success response, then press Ctrl+C if the subscription stays open. Fully close and reopen Luma after updating.
+Espera la respuesta de éxito y cierra con Ctrl+C si la suscripción sigue abierta. Cierra y vuelve a abrir LumiOS tras cada actualización.
 
-## Inputs on Home
+### Con webOS Dev Manager / ares
 
-Open **Settings → Inputs** and select an input to choose when it appears on Home:
-
-- **On** — always show it.
-- **Off** — never show it.
-- **Auto** — show it only when the TV reports it connected (the default).
-
-Choices are saved per input. Hidden and disconnected inputs remain available in Settings, and **Refresh inputs** updates the detected devices and their connection states.
-
-## Optional: open at boot
-
-After testing the installed app, run this inside the TV's root SSH shell:
+Registra la TV con `pnpm exec ares-setup-device` (SSH root, puerto 22) y luego:
 
 ```sh
-sh /media/developer/apps/usr/palm/applications/com.luma.launcher/autostart.sh enable
+pnpm run deploy --device tv
 ```
 
-This adds an app-owned hook at `/var/lib/webosbrew/init.d/65-luma`. It launches after a full boot with a 25-second delay. It does not run on every standby wake. Disable it before uninstalling:
+## Entradas y lanzadores en Home
+
+**Ajustes → Entradas** permite, por cada HDMI, ponerle nombre propio (p. ej. «Switch 2», se muestra grande y el puerto pequeño), elegir un icono de un pack y decidir cuándo aparece en Home: **On** (siempre), **Off** (nunca) o **Auto** (solo cuando la TV la reporta conectada, por defecto). **Actualizar entradas** vuelve a detectar dispositivos y su estado.
+
+**Añadir lanzador** crea una tarjeta en Home que abre cualquier app de la TV, incluidas las ocultas: AirPlay, Screen Share, audio Bluetooth, Home Dashboard… Cada lanzador tiene nombre, icono (por defecto o de un pack), app destino y visibilidad On/Off.
+
+## Packs de iconos (.icnl)
+
+Un `.icnl` es un ZIP con `pack.json` más `icons/<slug>/icon.svg` (o png/jpg/webp) y un `style.css` opcional cuyo selector raíz es `.icon`. Ejemplo completo en [packs/luma-brands](packs/luma-brands).
 
 ```sh
-sh /media/developer/apps/usr/palm/applications/com.luma.launcher/autostart.sh disable
+pnpm icnl pack packs/luma-brands
 ```
 
-## Optional: remote Home button
+Los packs viven en `/media/developer/lumios/packs/` de la TV. Tres formas de llevarlos:
 
-Use [LG Input Hook](https://repo.webosbrew.org/apps/org.webosbrew.inputhook/) to map your remote's Home key to this command (one line):
+- `pnpm icnl push dist/luma-brands.icnl --device tv` (misma TV registrada con `ares-setup-device`).
+- Arrastrar el `.icnl` a esa carpeta desde webOS Dev Manager.
+- Copiarlo a una memoria USB y usar **Ajustes → Iconos → Importar desde USB**.
+
+`pnpm icnl from-tv --device tv` genera un pack con los iconos propios de la TV. En **Ajustes → Iconos** se ven los packs instalados, se releen y se elige el icono de cada app (automático, icono de la TV o cualquier icono de un pack).
+
+## Opcional: abrir al arrancar y mantener en memoria
+
+Tras probar la app instalada, en la shell root de la TV:
 
 ```sh
-/usr/bin/luna-send -t 1 -w 5000 luna://com.webos.service.applicationmanager/launch '{"id":"com.luma.launcher"}'
+sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh enable
 ```
 
-Test the mapping on a spare button first. Disable any other Home-button listener before enabling Luma's mapping. Disable the Luma mapping in Input Hook to restore the normal button.
+Instala un hook en `/var/lib/webosbrew/init.d/65-lumios` que lanza LumiOS tras un arranque completo con `keepAlive`: al abrir otra app LumiOS queda oculto en memoria en vez de cerrarse, y volver es instantáneo. Si prefieres arrancar en el Home de LG y tener LumiOS listo para la tecla Home:
 
-Luma does not inject code into LG services, replace the stock launcher, or bind-mount system directories. Root-only Home routing is separate from the app itself.
+```sh
+sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh enable preload
+```
 
-## Troubleshooting
+Así se carga oculto al encender (`preload: full`) y la primera pulsación solo lo muestra. Para quitarlo antes de desinstalar:
+
+```sh
+sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh disable
+```
+
+## Opcional: botón Home del control
+
+Con [LG Input Hook](https://repo.webosbrew.org/apps/org.webosbrew.inputhook/) se puede mapear la tecla Home a este comando (una sola línea):
+
+```sh
+/usr/bin/luna-send -t 1 -w 5000 luna://com.webos.service.applicationmanager/launch '{"id":"com.dezik.lumios","keepAlive":true}'
+```
+
+Prueba primero en un botón libre y desactiva cualquier otro listener de Home antes de activar este.
+
+`keepAlive` mantiene LumiOS en memoria cuando sales a otra app; la TV puede cerrarlo igualmente si le falta memoria, y entonces la siguiente pulsación arranca en frío.
+
+## Opcional: precarga del sistema (experimental)
+
+LG mantiene Netflix y YouTube precargados con su gestor de precarga. **Ajustes → General → Precarga del sistema** registra LumiOS en esa lista ocupando el lugar del Home de LG (igual que hace AltHome): guarda la lista original en `/media/developer/lumios/preload-backup.json`, escribe la nueva con `configd`, la vuelve a aplicar en cada arranque y reinicia `preload-manager.service`. Desactivarlo restaura la lista original. Desde SSH:
+
+```sh
+sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh preload status
+```
+
+Verificado contra el código de SAM/WAM y AltHome; pendiente de prueba en esta TV.
+
+LumiOS no inyecta código en servicios de LG, no reemplaza el launcher de fábrica ni monta directorios del sistema.
+
+## Solución de problemas
 
 ### webOS 26: denied exec method
 
-Homebrew Channel 0.8.0-rc1 or newer provides the `lunabus.query` API permission mapping for elevated services ([upstream fix](https://github.com/webosbrew/webos-homebrew-channel/pull/233)). Luma declares that group alongside its app-launch permissions. Update Homebrew Channel and reinstall the latest Luma release if an older installation reports `Denied method call "exec" for category "/"`.
-
-If the denial persists after reopening Luma, perform a full TV reboot. If it still occurs, inspect the installed caller permissions and the Homebrew service mapping from the root SSH shell:
+Homebrew Channel 0.8.0-rc1 o superior aporta el permiso `lunabus.query` para servicios elevados. LumiOS lo declara junto con sus permisos de lanzamiento. Si una instalación antigua reporta `Denied method call "exec" for category "/"`, actualiza Homebrew Channel y reinstala LumiOS. Si persiste, reinicia la TV por completo y revisa desde SSH:
 
 ```sh
-cat /var/luna-service2*/client-permissions.d/com.luma.launcher*.json
+cat /var/luna-service2*/client-permissions.d/com.dezik.lumios*.json
 cat /var/luna-service2*/api-permissions.d/org.webosbrew.hbchannel.service.api.lunabus.query.json
 ```
 
-The caller needs `lunabus.query`, and Homebrew's mapping should contain `{"lunabus.query":["org.webosbrew.hbchannel.service/*"]}`. Homebrew Channel must also be elevated. Installing Luma via `luna-send` does not require elevating Luma itself.
+El caller necesita `lunabus.query` y el mapeo de Homebrew debe contener `{"lunabus.query":["org.webosbrew.hbchannel.service/*"]}`. Homebrew Channel debe estar elevado; LumiOS no necesita elevarse.
 
-## Compatibility and privacy
+## Compatibilidad y privacidad
 
-- Targets webOS 24–26 / Chromium 108+. Graphics are packaged at 1920 × 1080 and scale for desktop preview.
-- App/input discovery uses Homebrew Channel's elevated `exec` service. Fixed inventory commands read only app and physical-input lists.
-- App launches use the public application manager API with the `application.launcher` and `application.query` ACGs. Homebrew service access declares `lunabus.query` for webOS 26 / Homebrew Channel 0.8.0-rc1. No service permissions are rewritten.
-- Service bridges are retained until completion, bounded by timeouts, and cancelled afterward. Partial refresh failures preserve the last valid inventory.
-- All app names and IDs come from inventory on the TV. A failure never substitutes desktop sample apps.
-- Preferences, recent launches, weather location, and cached readings stay in this app's local storage. Forecast requests require an enabled widget and a configured location; city searches are sent only when you press Search. The packaged Content Security Policy limits web network connections to Open-Meteo's weather and geocoding APIs.
-- Homebrew Channel permissions and native service behavior need verification on the physical TV, particularly webOS 26. Browser tests cannot establish hardware compatibility.
+- webOS 24–26 / Chromium 108+. Gráficos empaquetados a 1920 × 1080; escalan en la vista previa de escritorio.
+- El inventario de apps y entradas se lee mediante el servicio `exec` elevado de Homebrew Channel. Los lanzamientos usan la API pública de applicationManager con los ACG `application.launcher` y `application.query`.
+- Preferencias, recientes, ubicación del clima y lecturas en caché viven en el almacenamiento local de la app. El CSP limita la red a las APIs de Open-Meteo.
+- El comportamiento de permisos y servicios nativos se valida en la TV física; los tests de navegador no prueban hardware.
 
-## Development
+## Desarrollo
 
-Use Node.js 22+ and pnpm 10 (the project pins pnpm 10.34.5):
+Node.js 22+ y pnpm 10 (el proyecto fija pnpm 10.34.5):
 
 ```sh
-git clone https://github.com/ecklf/lg-luma.git
-cd lg-luma
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open **http://127.0.0.1:5173**. The browser preview uses sample apps and inputs; TV actions show a preview message. On a TV, Luma loads the actual inventory.
+Abre **http://127.0.0.1:5188**. La vista previa usa apps y entradas de ejemplo; las acciones de TV muestran un mensaje. En la TV, LumiOS carga el inventario real.
 
-### Build a package
+Checks, estructura del código y convenciones: [agents.md](agents.md).
+
+### Generar el paquete
 
 ```sh
 pnpm run package
 ```
 
-Output: `dist/com.luma.launcher_1.1.1_all.ipk`, `dist/sha256sums`, and the Homebrew feed `dist/repo.json` with its icon. The standalone app is in `dist/app/` and works directly from `index.html` without a server.
+Salida: `dist/com.dezik.lumios_<versión>_all.ipk`, `dist/sha256sums` y el feed de Homebrew `dist/repo.json`. La app standalone queda en `dist/app/` y funciona desde `index.html` sin servidor.
 
-Photographs, fonts, and app-logo SVGs are bundled locally. `pnpm assets` prepares them again if deliberately removed; normal builds and TV use need no asset downloads.
+Para publicar, actualiza la versión en `package.json` y `appinfo.json` a la vez.
 
-To deploy a local build, register your TV's root SSH connection with `pnpm exec ares-setup-device`, then run `pnpm run deploy --device tv`.
+## Licencia
 
-### Releases
-
-GitHub Actions checks pull requests and pushes to `main`, runs the unit and browser tests, and builds the installable package. After a successful build on `main`, CI publishes a new app version with its IPK, checksum, icon, and Homebrew feed. The version tag (for example, `v1.1.1`) is created automatically at the tested commit.
-
-For each release, update the version in both `package.json` and `appinfo.json`, then merge to `main`. Already-published versions are skipped. To retry a failed run, use **Actions → CI → Run workflow** on `main`.
-
-The stable feed URL always serves the latest release. Contributor checks, controls, weather behavior, and the code map are documented in [agents.md](agents.md).
-
-## License
-
-MIT for Luma's source. See [assets.md](assets.md) for artwork, font, icon, and integration references.
+MIT. El código original es de los contribuidores de Luma; las modificaciones de LumiOS son de Dezik. Ver [license](license) y [assets.md](assets.md) para arte, fuentes e iconos de terceros.

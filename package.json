@@ -1,8 +1,8 @@
 {
-  "name": "lg-luma",
+  "name": "lumios",
   "version": "1.1.1",
   "private": true,
-  "description": "A modern, remote-first webOS launcher.",
+  "description": "LumiOS: a modern, remote-first launcher for LG webOS TVs (fork of lg-luma).",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -11,11 +11,12 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "vite --host 127.0.0.1 --port 5188 --strictPort",
     "build": "pnpm check && node tools/build.mjs",
     "package": "pnpm build && node tools/package.mjs && node tools/repository.mjs",
     "deploy": "pnpm run package && node tools/deploy.mjs",
     "test": "node --import tsx --test tests/*.test.ts",
+    "icnl": "node --import tsx tools/icnl.mjs",
     "test:browser": "playwright test",
     "check": "pnpm lint && pnpm typecheck",
     "lint": "oxlint --deny-warnings .",
@@ -28,6 +29,7 @@
     "assets": "node tools/assets.mjs"
   },
   "dependencies": {
+    "fflate": "0.8.2",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

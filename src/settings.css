@@ -359,3 +359,84 @@
     font-size: 1rem;
   }
 }
+
+/* Settings → Icons: small tile previews in list rows. */
+.settings-page .setting-row > span.icon-preview,
+.icon-preview {
+  flex: none;
+  flex-direction: row;
+  gap: 0;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #2b2f36, #15171b);
+  color: rgba(255, 255, 255, 0.72);
+}
+.icon-preview img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+.icon-preview[data-source='tv'] img {
+  width: 68%;
+  height: 68%;
+}
+.icon-preview > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.settings-group-title {
+  margin: 1.6rem 0 0.6rem 0.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.settings-group-title:first-child {
+  margin-top: 0;
+}
+.settings-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  opacity: 0.8;
+}
+
+/* Glyph previews and the inline name field in Settings → Inputs. */
+.icon-preview-glyph {
+  width: 62%;
+  height: 62%;
+  background: currentColor;
+  -webkit-mask-size: contain;
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center;
+  mask-repeat: no-repeat;
+}
+.settings-page .setting-row.setting-field > span:not(.toggle) {
+  flex: 0 1 38%;
+}
+.setting-field input {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff12;
+  border: 1px solid #ffffff1a;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.setting-field input:focus {
+  outline: none;
+  border-color: #f0f0f0;
+  box-shadow: 0 0 0 0.2rem #ffffff33;
+}
+.setting-field input::placeholder {
+  color: var(--muted);
+}
