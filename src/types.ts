@@ -23,6 +23,8 @@ export interface TVApp {
   brand: string;
   // Absolute path of the app's own icon on the TV, when the inventory reports one.
   iconPath?: string;
+  // Launcher tiles open this app id instead of their own.
+  target?: string;
 }
 
 export interface TVIcon {
@@ -34,7 +36,24 @@ export interface TVIcon {
 // app's own TV icon with a computed background colour.
 export type ResolvedIcon =
   | { source: 'pack'; url: string; ref: string; kind: IconKind }
-  | { source: 'tv'; url: string; color: string };
+  | { source: 'tv'; url: string; color: string }
+  | { source: 'builtin'; name: BuiltinIconName };
+
+// Symbols LumiOS draws itself, selectable for inputs and launchers without any pack.
+export type BuiltinIconName =
+  | 'hdmi'
+  | 'console'
+  | 'streamer'
+  | 'computer'
+  | 'usb'
+  | 'playstation'
+  | 'apple-tv'
+  | 'airplay'
+  | 'cast'
+  | 'bluetooth'
+  | 'dashboard'
+  | 'tv'
+  | 'rocket';
 
 export interface TVInput {
   id: string;
@@ -46,15 +65,18 @@ export interface TVInput {
   target?: string;
   // True when title comes from the user's own name for the input.
   named?: boolean;
+  placement?: 'inputs' | 'apps';
 }
 
 // A Home card that opens any app on the TV (AirPlay, Screen Share, …).
 export interface Launcher {
   id: string;
   title: string;
-  // "pack/slug" icon reference, or empty for the default symbol.
+  // "pack/slug" or "builtin:<name>", or empty for the default symbol.
   icon: string;
   target: string;
+  // Home card in the Inputs row, or a tile in the Apps library.
+  placement: 'inputs' | 'apps';
 }
 
 // Any app the TV can launch, including ones hidden from the library.
@@ -68,7 +90,8 @@ export interface Preferences {
   favorites: string[] | null;
   hidden: string[];
   recent: string[];
-  wallpaper: Wallpaper;
+  // A built-in wallpaper id, or a pack wallpaper reference "pack/slug".
+  wallpaper: string;
   reducedMotion: boolean;
   clock24: boolean;
   showHomeAppNames: boolean;

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isTV } from './bridge';
-import { iconRef, scopeIconCss } from './icnl';
+import { iconRef, scopeIconCss, wallpaperRef } from './icnl';
 import { importPacksFromUsb, removePackFile, syncPacks, type StoredPack } from './packs';
 
 export interface PackLibrary {
   packs: StoredPack[];
-  // Object URL per "pack/slug" reference.
+  // Object URL per "pack/slug" icon reference.
   urls: Map<string, string>;
+  // Object URL per "pack/slug" image wallpaper reference.
+  wallpaperUrls: Map<string, string>;
   loading: boolean;
   reload: () => Promise<StoredPack[]>;
   importFromUsb: () => Promise<number>;
@@ -20,6 +22,7 @@ const STYLE_ID = 'icnl-styles';
 export function usePacks(): PackLibrary {
   const [packs, setPacks] = useState<StoredPack[]>([]);
   const [urls, setUrls] = useState<Map<string, string>>(() => new Map());
+  const [wallpaperUrls, setWallpaperUrls] = useState<Map<string, string>>(() => new Map());
   const [loading, setLoading] = useState(false);
   const signal = useRef({ cancelled: false });
   const busy = useRef<Promise<StoredPack[]> | null>(null);
@@ -70,8 +73,18 @@ export function usePacks(): PackLibrary {
           iconRef(pack.id, icon.meta.slug),
           URL.createObjectURL(new Blob([icon.data], { type: icon.type })),
         );
+    const walls = new Map<string, string>();
+    for (const pack of packs)
+      for (const wallpaper of pack.wallpapers)
+        if (wallpaper.type)
+          walls.set(
+            wallpaperRef(pack.id, wallpaper.meta.slug),
+            URL.createObjectURL(new Blob([wallpaper.data], { type: wallpaper.type })),
+          );
     // oxlint-disable-next-line react/set-state-in-effect -- Object URLs derive from the loaded packs.
     setUrls((current) => (current.size === 0 && next.size === 0 ? current : next));
+    // oxlint-disable-next-line react/set-state-in-effect -- Object URLs derive from the loaded packs.
+    setWallpaperUrls((current) => (current.size === 0 && walls.size === 0 ? current : walls));
     let style = document.getElementById(STYLE_ID);
     if (!style) {
       style = document.createElement('style');
@@ -79,19 +92,32 @@ export function usePacks(): PackLibrary {
       document.head.append(style);
     }
     const css = packs
-      .flatMap((pack) =>
-        pack.icons
+      .flatMap((pack) => [
+        ...pack.icons
           .filter((icon) => icon.css)
           .flatMap((icon) =>
             ['.app-face', '.icon-preview'].map((root) =>
               scopeIconCss(icon.css, `${root}[data-icnl="${iconRef(pack.id, icon.meta.slug)}"]`),
             ),
           ),
-      )
+        // CSS wallpapers paint the Home background and their Settings thumbnail.
+        ...pack.wallpapers
+          .filter((wallpaper) => wallpaper.css)
+          .flatMap((wallpaper) =>
+            ['.wallpaper', '.wallpaper-thumbnail'].map((root) =>
+              scopeIconCss(
+                wallpaper.css,
+                `${root}[data-wallpaper="${wallpaperRef(pack.id, wallpaper.meta.slug)}"]`,
+                '.wallpaper',
+              ),
+            ),
+          ),
+      ])
       .join('\n');
     if (style.textContent !== css) style.textContent = css;
     return () => {
       for (const url of next.values()) URL.revokeObjectURL(url);
+      for (const url of walls.values()) URL.revokeObjectURL(url);
     };
   }, [packs]);
 
@@ -109,5 +135,5 @@ export function usePacks(): PackLibrary {
     [reload],
   );
 
-  return { packs, urls, loading, reload, importFromUsb, remove };
+  return { packs, urls, wallpaperUrls, loading, reload, importFromUsb, remove };
 }

@@ -1,0 +1,11 @@
+{
+  "format": "icnl/1",
+  "name": "Gradients",
+  "version": "1.0.0",
+  "author": "Dezik",
+  "wallpapers": {
+    "flow": { "title": "Flow" },
+    "ember": { "title": "Ember" },
+    "ocean": { "title": "Ocean" }
+  }
+}

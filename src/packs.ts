@@ -110,17 +110,20 @@ const acceptPack = (row: unknown): row is StoredPack =>
   Array.isArray((row as StoredPack).icons);
 
 const byId = (packs: StoredPack[]) => [...packs].sort((a, b) => a.id.localeCompare(b.id));
+// Packs cached before wallpapers existed have no wallpapers field.
+const withWallpapers = (pack: StoredPack): StoredPack =>
+  Array.isArray(pack.wallpapers) ? pack : { ...pack, wallpapers: [] };
 
 export async function readCachedPacks(): Promise<StoredPack[]> {
   const db = await openDatabase();
-  return db ? byId(await readStore(db, 'packs', acceptPack)) : [];
+  return db ? byId((await readStore(db, 'packs', acceptPack)).map(withWallpapers)) : [];
 }
 
 // Lists the folder, reads packs whose content hash changed, forgets packs whose files are gone.
 // When the TV cannot be read the cached packs stay in use.
 export async function syncPacks(signal: SyncSignal): Promise<StoredPack[]> {
   const db = await openDatabase();
-  const cached = db ? await readStore(db, 'packs', acceptPack) : [];
+  const cached = (db ? await readStore(db, 'packs', acceptPack) : []).map(withWallpapers);
   let listed: { path: string; hash: string; size: number }[];
   try {
     listed = parsePackList(decoder.decode(await execBytes(listCommand())));
@@ -152,6 +155,7 @@ export async function syncPacks(signal: SyncSignal): Promise<StoredPack[]> {
         version: '',
         author: '',
         icons: [],
+        wallpapers: [],
         error: error instanceof Error ? error.message : 'The file is not a valid .icnl pack.',
       };
     }

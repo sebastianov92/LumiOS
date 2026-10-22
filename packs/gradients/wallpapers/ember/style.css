@@ -1,0 +1,7 @@
+.wallpaper {
+  background-color: #1a0b0b;
+  background-image:
+    radial-gradient(at 28% 18%, #ff6a3d 0px, transparent 55%),
+    radial-gradient(at 82% 68%, #7a1f2b 0px, transparent 60%),
+    radial-gradient(at 50% 100%, #2b0f1a 0px, transparent 60%);
+}

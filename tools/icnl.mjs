@@ -61,7 +61,11 @@ async function readFolder(folder) {
       if (entry.name.startsWith('.')) continue;
       const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) await walk(path.join(dir, entry.name), relative);
-      else if (relative === 'pack.json' || relative.startsWith('icons/'))
+      else if (
+        relative === 'pack.json' ||
+        relative.startsWith('icons/') ||
+        relative.startsWith('wallpapers/')
+      )
         files[relative] = new Uint8Array(await fs.readFile(path.join(dir, entry.name)));
     }
   };
@@ -74,7 +78,11 @@ function summarize(pack) {
     (icon) =>
       `  ${icon.meta.slug.padEnd(24)} ${icon.meta.title}${icon.meta.apps.length ? `  apps: ${icon.meta.apps.join(', ')}` : ''}${icon.meta.match ? `  match: /${icon.meta.match}/i` : ''}${icon.css ? '  css' : ''}`,
   );
-  return `${pack.name} v${pack.version}${pack.author ? ` by ${pack.author}` : ''}: ${pack.icons.length} icons\n${lines.join('\n')}`;
+  const walls = pack.wallpapers.map(
+    (wallpaper) =>
+      `  ${wallpaper.meta.slug.padEnd(24)} ${wallpaper.meta.title}  ${wallpaper.type || 'css'}`,
+  );
+  return `${pack.name} v${pack.version}${pack.author ? ` by ${pack.author}` : ''}: ${pack.icons.length} icons, ${pack.wallpapers.length} wallpapers\n${[...lines, ...walls].join('\n')}`;
 }
 
 async function buildPack(folder, out) {

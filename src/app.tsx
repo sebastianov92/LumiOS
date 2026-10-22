@@ -25,10 +25,17 @@ import { moveFocus, type Direction } from './navigation';
 import { loadPreferences, savePreferences } from './storage';
 import { wallpapers } from './wallpapers';
 import { moveFavorite } from './favorites';
-import { applyInputNames, launcherInputs, visibleInputs } from './inputs';
+import {
+  applyInputNames,
+  builtinIconName,
+  launcherApps,
+  launcherInputs,
+  validBuiltinIcon,
+  visibleInputs,
+} from './inputs';
 import { useTVIcons } from './use-tv-icons';
 import { usePacks } from './use-packs';
-import { findIcon, iconRef, resolveAppIcon, resolveInputIcon } from './icnl';
+import { findIcon, findWallpaper, iconRef, resolveAppIcon, resolveInputIcon } from './icnl';
 import { useSystemPreload } from './preload';
 import type { IconDescription } from './components/icon-settings';
 import type { Category, Inventory, Page, Preferences, ResolvedIcon, TVApp, TVInput } from './types';
@@ -68,11 +75,30 @@ function Launcher({
   const tvIcons = useTVIcons(inventory.apps);
   const packs = usePacks();
   const systemPreload = useSystemPreload();
+  // Launchers shown as app tiles join the library; the rest stay cards in the Inputs row.
+  const apps = useMemo(
+    () => [...inventory.apps, ...launcherApps(preferences.launchers, inventory.targets)],
+    [inventory.apps, preferences.launchers, inventory.targets],
+  );
   // Icon priority per app: pack entry (override, exact id, match) → TV icon → built-in brand.
   const resolvedIcons = useMemo(() => {
     const map = new Map<string, IconDescription>();
-    for (const app of inventory.apps) {
-      const hit = resolveAppIcon(app, packs.packs, preferences.iconOverrides);
+    for (const app of apps) {
+      const launcher = app.target
+        ? preferences.launchers.find((item) => item.id === app.id)
+        : undefined;
+      if (!preferences.iconOverrides[app.id] && launcher && validBuiltinIcon(launcher.icon)) {
+        map.set(app.id, {
+          icon: { source: 'builtin', name: builtinIconName(launcher.icon) },
+          source: 'builtin',
+        });
+        continue;
+      }
+      const hit =
+        resolveAppIcon(app, packs.packs, preferences.iconOverrides) ??
+        (launcher?.icon && !validBuiltinIcon(launcher.icon)
+          ? findIcon(packs.packs, launcher.icon)
+          : undefined);
       const ref = hit ? iconRef(hit.pack.id, hit.icon.meta.slug) : '';
       const url = ref ? packs.urls.get(ref) : undefined;
       const tv = tvIcons[app.id];
@@ -87,7 +113,7 @@ function Launcher({
       else map.set(app.id, { source: app.brand === 'generic' ? 'generic' : 'builtin' });
     }
     return map;
-  }, [inventory.apps, packs.packs, packs.urls, preferences.iconOverrides, tvIcons]);
+  }, [apps, preferences.launchers, packs.packs, packs.urls, preferences.iconOverrides, tvIcons]);
   const describeIcon = useCallback(
     (app: TVApp): IconDescription => resolvedIcons.get(app.id) ?? { source: 'generic' },
     [resolvedIcons],
@@ -107,13 +133,10 @@ function Launcher({
   const lastReordering = useRef<string | null>(null);
   const refreshing = useRef(false);
   const reducedMotion = preferences.reducedMotion;
-  const appMap = useMemo(
-    () => new Map(inventory.apps.map((app) => [app.id, app])),
-    [inventory.apps],
-  );
+  const appMap = useMemo(() => new Map(apps.map((app) => [app.id, app])), [apps]);
   const favoriteIds = useMemo(
-    () => preferences.favorites ?? defaultFavorites(inventory.apps),
-    [preferences.favorites, inventory.apps],
+    () => preferences.favorites ?? defaultFavorites(apps),
+    [preferences.favorites, apps],
   );
   const hiddenIds = useMemo(() => new Set(preferences.hidden), [preferences.hidden]);
   const favorites = useMemo(
@@ -135,7 +158,10 @@ function Launcher({
   const homeInputs = useMemo(
     () => [
       ...visibleInputs(inputs, preferences.inputVisibility),
-      ...visibleInputs(launcherCards, preferences.inputVisibility),
+      ...visibleInputs(
+        launcherCards.filter((card) => card.placement !== 'apps'),
+        preferences.inputVisibility,
+      ),
     ],
     [inputs, launcherCards, preferences.inputVisibility],
   );
@@ -149,22 +175,31 @@ function Launcher({
       const url = packs.urls.get(ref);
       if (url) map.set(id, { source: 'pack', url, ref, kind: hit.icon.meta.kind });
     };
+    const choose = (id: string, choice: string | undefined, fallback: () => void) => {
+      if (validBuiltinIcon(choice))
+        map.set(id, { source: 'builtin', name: builtinIconName(choice) });
+      else fallback();
+    };
     for (const input of inputs)
-      add(input.id, resolveInputIcon(input.id, packs.packs, preferences.inputIcons));
+      choose(input.id, preferences.inputIcons[input.id], () =>
+        add(input.id, resolveInputIcon(input.id, packs.packs, preferences.inputIcons)),
+      );
     for (const launcher of preferences.launchers)
-      if (launcher.icon) add(launcher.id, findIcon(packs.packs, launcher.icon));
+      choose(launcher.id, launcher.icon, () => {
+        if (launcher.icon) add(launcher.id, findIcon(packs.packs, launcher.icon));
+      });
     return map;
   }, [inputs, preferences.launchers, preferences.inputIcons, packs.packs, packs.urls]);
   const inputIconFor = useCallback((input: TVInput) => inputIcons.get(input.id), [inputIcons]);
   const hiddenCount = useMemo(
-    () => inventory.apps.filter((app) => hiddenIds.has(app.id)).length,
-    [inventory.apps, hiddenIds],
+    () => apps.filter((app) => hiddenIds.has(app.id)).length,
+    [apps, hiddenIds],
   );
   const filteredApps = useMemo(() => {
     if (page !== 'apps') return [];
     const search = query.toLocaleLowerCase();
     return sortApps(
-      inventory.apps.filter(
+      apps.filter(
         (app) =>
           hiddenIds.has(app.id) === showHidden &&
           (!category || app.category === category) &&
@@ -172,7 +207,7 @@ function Launcher({
       ),
       favoriteIds,
     );
-  }, [page, inventory.apps, hiddenIds, showHidden, category, query, favoriteIds]);
+  }, [page, apps, hiddenIds, showHidden, category, query, favoriteIds]);
 
   const notify = useCallback((text: string, isError = false) => {
     clearTimeout(toastTimer.current);
@@ -293,15 +328,15 @@ function Launcher({
   const shiftFavorite = useCallback(
     (id: string, direction: -1 | 1) => {
       setPreferences((current) => {
-        const ids = current.favorites ?? defaultFavorites(inventory.apps);
+        const ids = current.favorites ?? defaultFavorites(apps);
         const visible = new Set(
-          inventory.apps.filter((app) => !current.hidden.includes(app.id)).map((app) => app.id),
+          apps.filter((app) => !current.hidden.includes(app.id)).map((app) => app.id),
         );
         const next = moveFavorite(ids, id, direction, visible);
         return next === ids ? current : { ...current, favorites: next };
       });
     },
-    [inventory.apps, setPreferences],
+    [apps, setPreferences],
   );
 
   const actions = useRef<{
@@ -490,6 +525,7 @@ function Launcher({
       onHold={prefix === 'favorite' ? startReordering : undefined}
     />
   );
+  const packWallpaper = findWallpaper(packs.packs, preferences.wallpaper);
   const wallpaper = wallpapers.find((item) => item.id === preferences.wallpaper) ?? wallpapers[0];
   const pageEntryFocus: Record<Page, string> = {
     home: favorites[0]
@@ -505,8 +541,17 @@ function Launcher({
     <div className={`lumios${reducedMotion ? ' reduce-motion' : ''}`}>
       <div className="landscape-fallback" />
       <div
-        className={`wallpaper wallpaper-${preferences.wallpaper}`}
-        style={{ backgroundImage: `url('./wallpapers/${wallpaper.image}')` }}
+        className={`wallpaper ${packWallpaper ? 'wallpaper-pack' : `wallpaper-${wallpaper.id}`}`}
+        data-wallpaper={packWallpaper ? preferences.wallpaper : undefined}
+        style={
+          packWallpaper
+            ? packWallpaper.wallpaper.type
+              ? {
+                  backgroundImage: `url('${packs.wallpaperUrls.get(preferences.wallpaper) ?? ''}')`,
+                }
+              : undefined
+            : { backgroundImage: `url('./wallpapers/${wallpaper.image}')` }
+        }
       />
       <div className="wallpaper-shade" />
       <div className="shell">
@@ -784,7 +829,7 @@ function Launcher({
                     ),
                 );
               }}
-              apps={inventory.apps}
+              apps={apps}
               packs={packs}
               describeIcon={describeIcon}
               onUpdate={update}

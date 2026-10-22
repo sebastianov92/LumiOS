@@ -1631,3 +1631,8 @@ button svg {
   color: #ecebff;
   background: linear-gradient(145deg, #8c7cff47, #6c4dff1f);
 }
+
+/* Launcher tiles in the Apps library and Home favorites. */
+.brand-launcher {
+  background: linear-gradient(135deg, #7c6cff, #3b2d9e);
+}

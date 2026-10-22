@@ -1,0 +1,9 @@
+/* Flow: duotone spot gradients (static approximation of a WebGL flow). */
+.wallpaper {
+  background-color: #4c5fd5;
+  background-image:
+    radial-gradient(at 20% 26%, #f3d3e4 0px, transparent 62%),
+    radial-gradient(at 80% 22%, #4c5fd5 0px, transparent 62%),
+    radial-gradient(at 72% 80%, #ff8fa3 0px, transparent 62%),
+    radial-gradient(at 24% 76%, #8b6bae 0px, transparent 62%);
+}

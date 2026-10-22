@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { iconRef, type IconKind } from '../icnl';
 import { PACKS_DIR, type StoredPack } from '../packs';
-import { useTranslation } from '../i18n';
-import type { ResolvedIcon, TVApp } from '../types';
+import { useTranslation, type MessageKey } from '../i18n';
+import { BUILTIN_PREFIX, builtinIconNames } from '../inputs';
+import { BuiltinSymbol } from './connection-icon';
+import type { BuiltinIconName, ResolvedIcon, TVApp } from '../types';
 
 export type IconSourceKind = 'pack' | 'tv' | 'builtin' | 'generic';
 export interface IconDescription {
@@ -29,7 +31,9 @@ export function IconPreview({ icon }: { icon?: ResolvedIcon }) {
       style={icon?.source === 'tv' ? { background: icon.color } : undefined}
       aria-hidden="true"
     >
-      {icon?.source === 'pack' && icon.kind === 'glyph' ? (
+      {icon?.source === 'builtin' ? (
+        <BuiltinSymbol name={icon.name} />
+      ) : icon?.source === 'pack' && icon.kind === 'glyph' ? (
         <span
           className="icon-preview-glyph"
           style={{ WebkitMaskImage: `url("${icon.url}")`, maskImage: `url("${icon.url}")` }}
@@ -306,4 +310,33 @@ export function AppIconPicker({
       onChange={(id) => onChange(id === 'auto' ? undefined : id)}
     />
   );
+}
+
+const builtinIconLabels: Record<BuiltinIconName, MessageKey> = {
+  hdmi: 'iconHdmi',
+  console: 'iconConsole',
+  streamer: 'iconStreamer',
+  computer: 'iconComputer',
+  usb: 'iconUsb',
+  playstation: 'iconPlaystation',
+  'apple-tv': 'iconAppleTv',
+  airplay: 'iconAirplay',
+  cast: 'iconCast',
+  bluetooth: 'iconBluetooth',
+  dashboard: 'iconDashboard',
+  tv: 'iconTv',
+  rocket: 'iconRocket',
+};
+
+// LumiOS's own symbols as picker options; available without any pack installed.
+export function builtinIconOptions(
+  t: (key: MessageKey) => string,
+  names: BuiltinIconName[] = builtinIconNames,
+): IconOption[] {
+  return names.map((name) => ({
+    id: `${BUILTIN_PREFIX}${name}`,
+    label: t(builtinIconLabels[name]),
+    hint: t('builtinIcons'),
+    icon: { source: 'builtin', name },
+  }));
 }

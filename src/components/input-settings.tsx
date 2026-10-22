@@ -338,24 +338,73 @@ export function InputDetail({
   );
 }
 
+// A short exclusive choice rendered as rows with a check mark.
+function OptionRows<Id extends string>({
+  prefix,
+  label,
+  options,
+  selected,
+  above,
+  below,
+  onChange,
+}: {
+  prefix: string;
+  label: string;
+  options: { id: Id; label: string; hint?: string }[];
+  selected: Id;
+  above: string;
+  below?: string;
+  onChange: (id: Id) => void;
+}) {
+  return (
+    <div className="settings-group" role="listbox" aria-label={label}>
+      {options.map((option, index) => (
+        <button
+          key={option.id}
+          type="button"
+          className="setting-row settings-list-item"
+          role="option"
+          aria-selected={selected === option.id}
+          data-focusable={`${prefix}-${option.id}`}
+          data-focus-up={index ? `${prefix}-${options[index - 1].id}` : above}
+          data-focus-down={
+            index + 1 < options.length ? `${prefix}-${options[index + 1].id}` : below
+          }
+          onClick={() => onChange(option.id)}
+        >
+          <span>
+            <strong>{option.label}</strong>
+            {option.hint ? <small>{option.hint}</small> : null}
+          </span>
+          {selected === option.id ? <Check aria-hidden="true" /> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function LauncherDetail({
   launcher,
   visibility,
+  placement,
   icon,
   iconLabel,
   onName,
   onOpenIcon,
   onOpenTarget,
+  onPlacement,
   onVisibility,
   onDelete,
 }: {
   launcher: TVInput;
   visibility: 'on' | 'off';
+  placement: 'inputs' | 'apps';
   icon?: ResolvedIcon;
   iconLabel: string;
   onName: (name: string) => void;
   onOpenIcon: () => void;
   onOpenTarget: () => void;
+  onPlacement: (placement: 'inputs' | 'apps') => void;
   onVisibility: (mode: 'on' | 'off') => void;
   onDelete: () => void;
 }) {
@@ -381,7 +430,7 @@ export function LauncherDetail({
         <button
           className="setting-row settings-list-item"
           {...focus('launcher-target')}
-          data-focus-down="launcher-visibility-option-on"
+          data-focus-down="launcher-placement-option-inputs"
           {...openWithRight(onOpenTarget)}
         >
           <Rocket aria-hidden="true" />
@@ -392,13 +441,26 @@ export function LauncherDetail({
           <ChevronRight aria-hidden="true" />
         </button>
       </div>
+      <h2 className="settings-group-title">{t('placement')}</h2>
+      <OptionRows
+        prefix="launcher-placement-option"
+        label={t('placement')}
+        options={[
+          { id: 'inputs' as const, label: t('placementInputs'), hint: t('placementInputsHint') },
+          { id: 'apps' as const, label: t('placementApps'), hint: t('placementAppsHint') },
+        ]}
+        selected={placement}
+        above="launcher-target"
+        below="launcher-visibility-option-on"
+        onChange={onPlacement}
+      />
       <h2 className="settings-group-title">{t('visibility')}</h2>
       <VisibilityOptions
         modes={launcherVisibilityModes}
         prefix="launcher-visibility-option"
         value={visibility}
         label={t('visibility')}
-        above="launcher-target"
+        above="launcher-placement-option-apps"
         onChange={onVisibility}
       />
       <div className="settings-group">

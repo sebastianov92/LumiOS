@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { zipSync } from 'fflate';
 import {
   findIcon,
+  findWallpaper,
   parseIconRef,
   parseManifest,
   parsePack,
@@ -204,5 +205,69 @@ test('USB packs are copied under shell-safe names', () => {
   assert.equal(
     importCommand(found),
     `mkdir -p '${PACKS_DIR}' && cp -f '/tmp/usb/sda/sda1/My Icons.icnl' '${PACKS_DIR}/My-Icons.icnl'`,
+  );
+});
+
+test('packs can carry wallpapers as images or stylesheets, and preferences may point at them', () => {
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]);
+  const pack = parsePack('walls', {
+    'pack.json': encode(
+      JSON.stringify({
+        format: 'icnl/1',
+        name: 'Walls',
+        wallpapers: { flow: { title: 'Flow' }, dot: {}, missing: { title: 'Missing' } },
+      }),
+    ),
+    'wallpapers/flow/style.css': encode('.wallpaper { background: red; } .wallpaper img { x: 1 }'),
+    'wallpapers/dot/image.png': png,
+  });
+  assert.equal(pack.icons.length, 0);
+  assert.deepEqual(
+    pack.wallpapers.map((wallpaper) => [
+      wallpaper.meta.slug,
+      wallpaper.meta.title,
+      wallpaper.type,
+      wallpaper.data.byteLength,
+      !!wallpaper.css,
+    ]),
+    [
+      ['flow', 'Flow', '', 0, true],
+      ['dot', 'dot', 'image/png', png.length, false],
+    ],
+  );
+  assert.equal(
+    scopeIconCss(pack.wallpapers[0].css, '.wallpaper[data-wallpaper="walls/flow"]', '.wallpaper'),
+    '.wallpaper[data-wallpaper="walls/flow"] { background: red; }\n.wallpaper[data-wallpaper="walls/flow"] img { x: 1; }',
+  );
+  assert.equal(findWallpaper([pack], 'walls/dot')?.wallpaper.type, 'image/png');
+  assert.equal(findWallpaper([pack], 'walls/nope'), undefined);
+  assert.throws(
+    () =>
+      parsePack(
+        'walls',
+        {
+          'pack.json': encode(
+            JSON.stringify({ format: 'icnl/1', name: 'W', wallpapers: { missing: {} } }),
+          ),
+        },
+        { strict: true },
+      ),
+    /has no wallpapers\/missing/,
+  );
+  assert.throws(
+    () => parseManifest({ format: 'icnl/1', name: 'Empty' }),
+    /lists no icons or wallpapers/,
+  );
+  assert.equal(
+    parsePreferences(JSON.stringify({ version: 1, wallpaper: 'walls/flow' })).wallpaper,
+    'walls/flow',
+  );
+  assert.equal(
+    parsePreferences(JSON.stringify({ version: 1, wallpaper: 'nope' })).wallpaper,
+    'dunes',
+  );
+  assert.equal(
+    parsePreferences(JSON.stringify({ version: 1, wallpaper: 'summit' })).wallpaper,
+    'summit',
   );
 });

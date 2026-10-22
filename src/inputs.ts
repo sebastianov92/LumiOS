@@ -1,6 +1,14 @@
 import { inputKind, validAppId } from './catalog';
 import { parseIconRef } from './icnl';
-import type { AppTarget, InputVisibility, Launcher, Preferences, TVInput } from './types';
+import type {
+  AppTarget,
+  BuiltinIconName,
+  InputVisibility,
+  Launcher,
+  Preferences,
+  TVApp,
+  TVInput,
+} from './types';
 
 export const inputVisibilityModes = ['on', 'off', 'auto'] as const;
 export const launcherVisibilityModes = ['on', 'off'] as const;
@@ -38,10 +46,36 @@ export function parseInputNames(value: unknown): Record<string, string> {
   );
 }
 
+export const builtinIconNames: BuiltinIconName[] = [
+  'hdmi',
+  'console',
+  'streamer',
+  'computer',
+  'usb',
+  'playstation',
+  'apple-tv',
+  'airplay',
+  'cast',
+  'bluetooth',
+  'dashboard',
+  'tv',
+  'rocket',
+];
+export const BUILTIN_PREFIX = 'builtin:';
+export const validBuiltinIcon = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  value.startsWith(BUILTIN_PREFIX) &&
+  (builtinIconNames as string[]).includes(value.slice(BUILTIN_PREFIX.length));
+export const builtinIconName = (choice: string) =>
+  choice.slice(BUILTIN_PREFIX.length) as BuiltinIconName;
+// An icon choice for inputs and launchers: a pack reference or a built-in symbol.
+export const validIconChoice = (value: unknown): value is string =>
+  parseIconRef(value) !== null || validBuiltinIcon(value);
+
 export function parseInputIcons(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return Object.fromEntries(
-    Object.entries(value).filter(([id, ref]) => validAppId(id) && parseIconRef(ref) !== null),
+    Object.entries(value).filter(([id, ref]) => validAppId(id) && validIconChoice(ref)),
   );
 }
 
@@ -58,15 +92,16 @@ export function parseLaunchers(value: unknown): Launcher[] {
   return value
     .flatMap((entry): Launcher[] => {
       if (!entry || typeof entry !== 'object') return [];
-      const { id, title, icon, target } = entry as Record<string, unknown>;
+      const { id, title, icon, target, placement } = entry as Record<string, unknown>;
       if (!validLauncherId(id) || seen.has(id) || !validAppId(target)) return [];
       seen.add(id);
       return [
         {
           id,
           title: cleanName(title) || target,
-          icon: parseIconRef(icon) ? (icon as string) : '',
+          icon: validIconChoice(icon) ? icon : '',
           target,
+          placement: placement === 'apps' ? 'apps' : 'inputs',
         },
       ];
     })
@@ -100,15 +135,33 @@ export function applyInputNames(inputs: TVInput[], names: Record<string, string>
   });
 }
 
+const targetTitle = (targets: AppTarget[], id: string) =>
+  targets.find((target) => target.id === id)?.title ?? id;
+
+// Every launcher as a card record (Settings lists them all); Home shows only placement "inputs".
 export function launcherInputs(launchers: Launcher[], targets: AppTarget[]): TVInput[] {
   return launchers.map((launcher) => ({
     id: launcher.id,
     title: launcher.title,
-    port: targets.find((target) => target.id === launcher.target)?.title ?? launcher.target,
+    port: targetTitle(targets, launcher.target),
     connected: null,
     kind: 'launcher',
     target: launcher.target,
+    placement: launcher.placement,
   }));
+}
+
+// Launchers placed as apps join the library as tiles that open their target.
+export function launcherApps(launchers: Launcher[], targets: AppTarget[]): TVApp[] {
+  return launchers
+    .filter((launcher) => launcher.placement === 'apps')
+    .map((launcher) => ({
+      id: launcher.id,
+      title: launcher.title || targetTitle(targets, launcher.target),
+      category: 'Utilities',
+      brand: 'launcher',
+      target: launcher.target,
+    }));
 }
 
 // What a card or settings row shows big: the user's name, the launcher title, or the port.

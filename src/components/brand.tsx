@@ -1,6 +1,7 @@
 import { AppWindow, Coffee, Gamepad2, Globe, MonitorPlay, Settings2, Tv } from 'lucide-react';
 import type { ResolvedIcon, TVApp } from '../types';
 import { useTranslation } from '../i18n';
+import { BuiltinSymbol, launcherSymbolName } from './connection-icon';
 
 const logos: Record<string, string> = {
   apple: 'apple-tv',
@@ -18,6 +19,13 @@ const logos: Record<string, string> = {
 // artwork → a generic symbol with the app name.
 export function Brand({ app, icon }: { app: TVApp; icon?: ResolvedIcon }) {
   const { t } = useTranslation();
+  if (icon?.source === 'builtin')
+    return (
+      <span className="brand-symbol">
+        <BuiltinSymbol name={icon.name} />
+        <span>{app.title}</span>
+      </span>
+    );
   if (icon)
     return (
       <span className={icon.source === 'pack' ? 'brand-pack' : 'brand-installed'}>
@@ -112,6 +120,13 @@ export function Brand({ app, icon }: { app: TVApp; icon?: ResolvedIcon }) {
         <span className="brand-symbol">
           <Settings2 />
           <span>{t('settings')}</span>
+        </span>
+      );
+    case 'launcher':
+      return (
+        <span className="brand-symbol">
+          <BuiltinSymbol name={launcherSymbolName(app.target)} />
+          <span>{app.title}</span>
         </span>
       );
     default:

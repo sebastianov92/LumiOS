@@ -35,7 +35,7 @@ Prueba en TV: inventario con 40+ apps carga iconos en < 2 s en frío y 0 s en ca
 
 ## F2 — Formato `.icnl` + módulo de iconos — HECHA 2026-10-22 (pendiente de prueba en TV)
 
-Implementado: `src/icnl.ts` (formato, CSS scoped, resolución), `src/packs.ts` (listado md5, lectura por trozos `dd`, unzip fflate, caché, USB), `src/use-packs.ts`, Ajustes → Iconos (`icon-settings.tsx`), `tools/icnl.mjs` (`pack`, `inspect`, `push`, `from-tv`), pack de ejemplo `packs/luma-brands`. Verificado en escritorio con un pack simulado en el mock de TV de Playwright.
+Implementado: `src/icnl.ts` (formato, CSS scoped, resolución), `src/packs.ts` (listado md5, lectura por trozos `dd`, unzip fflate, caché, USB), `src/use-packs.ts`, Ajustes → Iconos (`icon-settings.tsx`), `tools/icnl.mjs` (`pack`, `inspect`, `push`, `from-tv`), pack de ejemplo `packs/luma-brands`. Verificado en escritorio con un pack simulado en el mock de TV de Playwright. Ampliado: fondos en packs (`wallpapers/<slug>/image.*` o `style.css` raíz `.wallpaper`), elegibles en Ajustes → Fondo; pack ejemplo `packs/gradients` (Flow, Ember, Ocean).
 
 ### Formato
 
@@ -107,7 +107,7 @@ Descartado: servidor HTTP en la TV. Implicaría un servicio Node en el ipk, puer
 
 ## F3 — Entradas: renombrar, iconos y lanzadores personalizados — HECHA 2026-10-22 (pendiente de prueba en TV)
 
-Implementado: `inputNames`, `inputIcons`, `launchers` en preferencias; `src/inputs.ts` (nombres, lanzadores → tarjetas, visibilidad); `Inventory.targets` con todas las apps lanzables; glyphs de pack como máscara CSS; Ajustes → Entradas con subpáginas nombre/icono/visibilidad, lanzadores con destino y borrado, subpáginas hijas que vuelven a su padre. Verificado en escritorio (unit + Playwright).
+Implementado: `inputNames`, `inputIcons`, `launchers` en preferencias; `src/inputs.ts` (nombres, lanzadores → tarjetas, visibilidad); `Inventory.targets` con todas las apps lanzables; glyphs de pack como máscara CSS; Ajustes → Entradas con subpáginas nombre/icono/visibilidad, lanzadores con destino y borrado, subpáginas hijas que vuelven a su padre. Verificado en escritorio (unit + Playwright). Ampliado el mismo día: símbolos integrados elegibles sin pack (`builtin:<nombre>`) para entradas y lanzadores, y lanzadores con `placement` entrada/app (tile en la biblioteca, fijable en Inicio).
 
 - Preferencias nuevas: `inputNames: Record<id, string>`, `inputIcons: Record<id, "pack/slug">`, `launchers: Launcher[]`.
 - **Renombrar**: Ajustes → Entradas → HDMI 1 → _Nombre_ (teclado en pantalla de webOS, como ya usa la búsqueda de ciudad). La tarjeta muestra el nombre grande ("Switch 2") y el puerto pequeño ("HDMI 1").

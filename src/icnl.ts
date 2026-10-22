@@ -14,8 +14,16 @@ export const iconFileTypes: Record<string, string> = {
   webp: 'image/webp',
 };
 export const MAX_PACK_ICONS = 400;
+export const MAX_PACK_WALLPAPERS = 40;
 export const MAX_ICON_FILE_BYTES = 1024 * 1024;
 export const MAX_ICON_CSS = 20 * 1024;
+export const MAX_WALLPAPER_BYTES = 8 * 1024 * 1024;
+export const wallpaperImageTypes: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
 const MAX_MATCH_PATTERN = 200;
 
 export interface PackIconMeta {
@@ -28,12 +36,28 @@ export interface PackIconMeta {
   match: string;
 }
 
+export interface PackWallpaperMeta {
+  slug: string;
+  title: string;
+}
+
 export interface PackManifest {
   format: typeof ICNL_FORMAT;
   name: string;
   version: string;
   author: string;
   icons: PackIconMeta[];
+  wallpapers: PackWallpaperMeta[];
+}
+
+// A Home background: an image, or a stylesheet whose root selector `.wallpaper` paints it
+// (gradients and the like). Both show in Settings → Background.
+export interface PackWallpaper {
+  meta: PackWallpaperMeta;
+  // Image MIME type, or empty for a CSS-only wallpaper.
+  type: string;
+  data: ArrayBuffer;
+  css: string;
 }
 
 export interface PackIcon {
@@ -50,6 +74,7 @@ export interface IconPack {
   version: string;
   author: string;
   icons: PackIcon[];
+  wallpapers: PackWallpaper[];
 }
 
 export const validPackId = (value: unknown): value is string =>
@@ -57,6 +82,7 @@ export const validPackId = (value: unknown): value is string =>
 export const validSlug = (value: unknown): value is string =>
   typeof value === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(value);
 export const iconRef = (packId: string, slug: string) => `${packId}/${slug}`;
+export const wallpaperRef = iconRef;
 
 export function parseIconRef(ref: unknown): { packId: string; slug: string } | null {
   if (typeof ref !== 'string') return null;
@@ -86,10 +112,14 @@ export function parseManifest(raw: unknown): PackManifest {
     throw new Error(`Unsupported pack format. Expected "format": "${ICNL_FORMAT}".`);
   const name = clean(manifest.name, 80);
   if (!name) throw new Error('pack.json needs a "name".');
-  if (!manifest.icons || typeof manifest.icons !== 'object' || Array.isArray(manifest.icons))
-    throw new Error('pack.json needs an "icons" object keyed by slug.');
+  const record = (value: unknown, field: string): Record<string, unknown> => {
+    if (value === undefined) return {};
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+      throw new Error(`pack.json "${field}" must be an object keyed by slug.`);
+    return value as Record<string, unknown>;
+  };
   const icons: PackIconMeta[] = [];
-  for (const [slug, entry] of Object.entries(manifest.icons)) {
+  for (const [slug, entry] of Object.entries(record(manifest.icons, 'icons'))) {
     if (!validSlug(slug))
       throw new Error(`Invalid icon slug "${slug}". Use lowercase letters, digits and dashes.`);
     if (icons.length >= MAX_PACK_ICONS)
@@ -115,13 +145,29 @@ export function parseManifest(raw: unknown): PackManifest {
       match,
     });
   }
-  if (!icons.length) throw new Error('pack.json lists no icons.');
+  const wallpapers: PackWallpaperMeta[] = [];
+  for (const [slug, entry] of Object.entries(record(manifest.wallpapers, 'wallpapers'))) {
+    if (!validSlug(slug))
+      throw new Error(
+        `Invalid wallpaper slug "${slug}". Use lowercase letters, digits and dashes.`,
+      );
+    if (wallpapers.length >= MAX_PACK_WALLPAPERS)
+      throw new Error(`A pack holds at most ${MAX_PACK_WALLPAPERS} wallpapers.`);
+    const fields =
+      entry && typeof entry === 'object' && !Array.isArray(entry)
+        ? (entry as Record<string, unknown>)
+        : {};
+    wallpapers.push({ slug, title: clean(fields.title, 80) || slug });
+  }
+  if (!icons.length && !wallpapers.length)
+    throw new Error('pack.json lists no icons or wallpapers.');
   return {
     format: ICNL_FORMAT,
     name,
     version: clean(manifest.version, 32) || '0.0.0',
     author: clean(manifest.author, 80),
     icons,
+    wallpapers,
   };
 }
 
@@ -156,12 +202,15 @@ function splitDeclarations(body: string): string[] {
   return parts;
 }
 
-function buildRule(selector: string, body: string, scope: string): string {
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function buildRule(selector: string, body: string, scope: string, root: string): string {
+  const rootPattern = new RegExp(`^${escapeRegExp(root)}(?![\\w-])`);
   const selectors = selector
     .split(',')
     .map((part) => part.trim())
     .filter((part) => part && !/[{}@;\\<>]/.test(part))
-    .map((part) => (/^\.icon(?![\w-])/.test(part) ? scope + part.slice(5) : `${scope} ${part}`));
+    .map((part) => (rootPattern.test(part) ? scope + part.slice(root.length) : `${scope} ${part}`));
   const declarations = splitDeclarations(body)
     .map((part) => part.trim())
     .filter((part) => part.includes(':') && safeDeclaration(part));
@@ -171,7 +220,9 @@ function buildRule(selector: string, body: string, scope: string): string {
 
 // Rewrites a pack stylesheet so `.icon` means one tile. At-rules, imports and non-data URLs are
 // dropped; every other selector is nested under the scope.
-export function scopeIconCss(source: string, scope: string): string {
+// `root` is the selector the stylesheet treats as "this tile" (`.icon`) or "this background"
+// (`.wallpaper`); it is rewritten to `scope`.
+export function scopeIconCss(source: string, scope: string, root = '.icon'): string {
   const css = source.slice(0, MAX_ICON_CSS).replace(/\/\*[\s\S]*?\*\//g, '');
   const rules: string[] = [];
   let depth = 0;
@@ -191,7 +242,7 @@ export function scopeIconCss(source: string, scope: string): string {
       if (depth === 0) {
         const selector = css.slice(selectorStart, bodyStart - 1).trim();
         if (!selector.startsWith('@')) {
-          const rule = buildRule(selector, css.slice(bodyStart, index), scope);
+          const rule = buildRule(selector, css.slice(bodyStart, index), scope, root);
           if (rule) rules.push(rule);
         }
         start = index + 1;
@@ -247,13 +298,44 @@ export function parsePack(
       css: styles ? decoder.decode(styles).slice(0, MAX_ICON_CSS) : '',
     });
   }
-  if (!icons.length) throw new Error('The pack has no icon files.');
+  const wallpapers: PackWallpaper[] = [];
+  for (const meta of manifest.wallpapers) {
+    const image = Object.entries(wallpaperImageTypes)
+      .map(([extension, type]) => ({
+        type,
+        data: file(`wallpapers/${meta.slug}/image.${extension}`),
+      }))
+      .find((candidate) => candidate.data && candidate.data.length);
+    const styles = file(`wallpapers/${meta.slug}/style.css`);
+    if (!image && !(styles && styles.length)) {
+      if (options.strict)
+        throw new Error(
+          `Wallpaper "${meta.slug}" has no wallpapers/${meta.slug}/image.* or style.css file.`,
+        );
+      continue;
+    }
+    if (image && image.data!.length > MAX_WALLPAPER_BYTES) {
+      if (options.strict) throw new Error(`Wallpaper "${meta.slug}" is larger than 8 MiB.`);
+      continue;
+    }
+    const data = new ArrayBuffer(image ? image.data!.byteLength : 0);
+    if (image) new Uint8Array(data).set(image.data!);
+    wallpapers.push({
+      meta,
+      type: image?.type ?? '',
+      data,
+      css: styles ? decoder.decode(styles).slice(0, MAX_ICON_CSS) : '',
+    });
+  }
+  if (!icons.length && !wallpapers.length)
+    throw new Error('The pack has no icon or wallpaper files.');
   return {
     id,
     name: manifest.name,
     version: manifest.version,
     author: manifest.author,
     icons,
+    wallpapers,
   };
 }
 
@@ -319,4 +401,15 @@ export function resolveInputIcon(
   for (const pack of packs)
     for (const icon of pack.icons) if (icon.meta.inputs.includes(inputId)) return { pack, icon };
   return undefined;
+}
+
+export function findWallpaper(
+  packs: IconPack[],
+  ref: string,
+): { pack: IconPack; wallpaper: PackWallpaper } | undefined {
+  const parsed = parseIconRef(ref);
+  if (!parsed) return undefined;
+  const pack = packs.find((candidate) => candidate.id === parsed.packId);
+  const wallpaper = pack?.wallpapers.find((candidate) => candidate.meta.slug === parsed.slug);
+  return pack && wallpaper ? { pack, wallpaper } : undefined;
 }

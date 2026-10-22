@@ -45,7 +45,9 @@ pnpm run deploy --device tv
 
 **Ajustes → Entradas** permite, por cada HDMI, ponerle nombre propio (p. ej. «Switch 2», se muestra grande y el puerto pequeño), elegir un icono de un pack y decidir cuándo aparece en Home: **On** (siempre), **Off** (nunca) o **Auto** (solo cuando la TV la reporta conectada, por defecto). **Actualizar entradas** vuelve a detectar dispositivos y su estado.
 
-**Añadir lanzador** crea una tarjeta en Home que abre cualquier app de la TV, incluidas las ocultas: AirPlay, Screen Share, audio Bluetooth, Home Dashboard… Cada lanzador tiene nombre, icono (por defecto o de un pack), app destino y visibilidad On/Off.
+**Añadir lanzador** crea un acceso que abre cualquier app de la TV, incluidas las ocultas: AirPlay, Screen Share, audio Bluetooth, Home Dashboard… Cada lanzador tiene nombre, icono, app destino, visibilidad On/Off y **Mostrar como**: tarjeta en la fila de Entradas o tile en la biblioteca de Apps (y desde ahí se fija en Inicio manteniendo OK).
+
+Los iconos de entradas y lanzadores se eligen entre los **símbolos integrados** (HDMI, consola, reproductor, computadora, USB, PlayStation, Apple TV, AirPlay, compartir pantalla, Bluetooth, panel, TV, cohete) o cualquier icono de un pack.
 
 ## Packs de iconos (.icnl)
 
@@ -62,6 +64,8 @@ Los packs viven en `/media/developer/lumios/packs/` de la TV. Tres formas de lle
 - Copiarlo a una memoria USB y usar **Ajustes → Iconos → Importar desde USB**.
 
 `pnpm icnl from-tv --device tv` genera un pack con los iconos propios de la TV. En **Ajustes → Iconos** se ven los packs instalados, se releen y se elige el icono de cada app (automático, icono de la TV o cualquier icono de un pack).
+
+Los packs también pueden traer **fondos** para Ajustes → Fondo: `wallpapers/<slug>/image.jpg` (o png/webp) o `wallpapers/<slug>/style.css` con el selector raíz `.wallpaper`, por ejemplo gradientes. Ejemplo CSS sin imágenes en [packs/gradients](packs/gradients) (`pnpm icnl pack packs/gradients`).
 
 ## Opcional: abrir al arrancar y mantener en memoria
 

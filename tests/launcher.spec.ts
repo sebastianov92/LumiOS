@@ -962,6 +962,7 @@ function mockPack(): MockPack {
           netflix: { title: 'Netflix tile', apps: ['netflix'] },
           switch: { title: 'Switch glyph', kind: 'glyph', inputs: ['com.webos.app.hdmi2'] },
         },
+        wallpapers: { flow: { title: 'Flow' }, dot: { title: 'Dot' } },
       }),
     ),
     'icons/netflix/icon.svg': Buffer.from(
@@ -970,6 +971,13 @@ function mockPack(): MockPack {
     'icons/netflix/style.css': Buffer.from('.icon { background: rgb(20, 20, 20); }'),
     'icons/switch/icon.svg': Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"/></svg>',
+    ),
+    'wallpapers/flow/style.css': Buffer.from(
+      '.wallpaper { background-color: #4c5fd5; background-image: radial-gradient(at 20% 26%, #f3d3e4 0px, transparent 62%); }',
+    ),
+    'wallpapers/dot/image.png': Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      'base64',
     ),
   };
   const bytes = zipSync(files);
@@ -1834,7 +1842,7 @@ test('launchers are added from any TV app, shown on Home, hidden with Off and de
   await expect(card).toHaveCount(1);
   await expect(card.locator('.input-title')).toHaveText('Mirror iPhone');
   await expect(card.locator('.input-state')).toHaveText('AirPlay');
-  await expect(card.locator('[data-connection-icon="launcher"]')).toBeVisible();
+  await expect(card.locator('[data-connection-icon="airplay"]')).toBeVisible();
   await card.click();
   await expect(
     page.getByRole('status').filter({ hasText: 'Mirror iPhone will open on your TV.' }),
@@ -1899,4 +1907,118 @@ test('without a TV the system preload switch says it only works on the TV', asyn
   await row.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('status').filter({ hasText: 'Available on the TV.' })).toBeVisible();
+});
+
+test('input icons can be chosen from built-in symbols without any pack', async ({ page }) => {
+  await page.goto('/');
+  const card = page.locator('[data-focusable="input-com.webos.app.hdmi2"]');
+  await expect(card.locator('[data-connection-icon="apple-tv"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  await expect(page.locator('.settings-pane [data-focusable]').first()).toBeFocused();
+  const row = page.locator('[data-focusable="setting-input-com.webos.app.hdmi2"]');
+  await row.press('ArrowRight');
+  await expect(page.locator('[data-focusable="input-visibility-option-auto"]')).toBeFocused();
+  const iconRow = page.locator('[data-focusable="input-icon"]');
+  await expect(iconRow.locator('.setting-value')).toHaveText('Automatic');
+  await iconRow.press('ArrowRight');
+  await expect(page.locator('[data-focusable="input-icon-option-auto"]')).toBeFocused();
+  await expect(page.getByRole('option', { name: /^Console/ })).toContainText('Built-in symbols');
+  await page.locator('[data-focusable="input-icon-option-builtin:console"]').click();
+  await expect(iconRow).toBeFocused();
+  await expect(iconRow.locator('.setting-value')).toHaveText('Console');
+  await expect(iconRow.locator('[data-connection-icon="console"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(row).toBeFocused();
+  await expect(row.locator('[data-connection-icon="console"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(card.locator('[data-connection-icon="console"]')).toBeVisible();
+  await page.reload();
+  await expect(card.locator('[data-connection-icon="console"]')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).inputIcons,
+    ),
+  ).toEqual({ 'com.webos.app.hdmi2': 'builtin:console' });
+});
+
+test('a launcher can be shown as an app tile instead of an input card', async ({ page }) => {
+  await page.addInitScript(() => {
+    // Seed once; a reload must keep what the test changed.
+    if (localStorage.getItem('lumios.preferences.v1')) return;
+    localStorage.setItem(
+      'lumios.preferences.v1',
+      JSON.stringify({
+        version: 1,
+        launchers: [
+          {
+            id: 'launcher-tile01',
+            title: 'AirPlay',
+            icon: '',
+            target: 'airplay',
+            placement: 'inputs',
+          },
+        ],
+      }),
+    );
+  });
+  await page.goto('/');
+  await expect(page.locator('.home-input-grid .input-launcher')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Inputs', exact: true }).click();
+  await expect(page.locator('.settings-pane [data-focusable]').first()).toBeFocused();
+  const row = page.locator('[data-focusable="setting-launcher-launcher-tile01"]');
+  await row.press('ArrowRight');
+  await expect(page.locator('[data-focusable="launcher-name"]')).toBeFocused();
+  await page.locator('[data-focusable="launcher-placement-option-apps"]').click();
+  await expect(page.locator('[data-focusable="launcher-placement-option-apps"]')).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Home', exact: true }).click();
+  await expect(page.locator('.home-input-grid .input-launcher')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const tile = page.locator('[data-focusable="library-launcher-tile01"]');
+  await expect(tile).toBeVisible();
+  await expect(tile.locator('.app-face')).toHaveClass(/brand-launcher/);
+  await expect(tile.locator('[data-connection-icon="airplay"]')).toBeVisible();
+  await expect(tile.locator('.app-label')).toHaveText('AirPlay');
+  await tile.click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'AirPlay will open on your TV.' }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  await expect(tile).toBeVisible();
+});
+
+test('pack wallpapers join Settings → Background as gradients or images and persist', async ({
+  page,
+}) => {
+  await installMockTV(page, false, undefined, undefined, [mockPack()]);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Background', exact: true }).click();
+  const flow = page.locator('[data-focusable="wallpaper-mock/flow"]');
+  await expect(flow).toContainText('Flow');
+  await expect(flow.locator('.wallpaper-thumbnail')).toHaveCSS(
+    'background-color',
+    'rgb(76, 95, 213)',
+  );
+  await flow.click();
+  const wall = page.locator('.wallpaper');
+  await expect(wall).toHaveAttribute('data-wallpaper', 'mock/flow');
+  await expect(wall).toHaveCSS('background-color', 'rgb(76, 95, 213)');
+  await expect(wall).toHaveCSS('background-image', /radial-gradient/);
+  const dot = page.locator('[data-focusable="wallpaper-mock/dot"]');
+  await expect(dot.locator('img')).toHaveAttribute('src', /^blob:/);
+  await dot.click();
+  await expect(wall).toHaveAttribute('data-wallpaper', 'mock/dot');
+  await expect(wall).toHaveCSS('background-image', /blob:/);
+  await page.reload();
+  await expect(page.locator('.wallpaper')).toHaveAttribute('data-wallpaper', 'mock/dot');
+  await expect(page.locator('.wallpaper')).toHaveCSS('background-image', /blob:/);
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('lumios.preferences.v1')!).wallpaper),
+  ).toBe('mock/dot');
 });

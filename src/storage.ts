@@ -3,7 +3,7 @@ import { parseLocation } from './weather';
 import { wallpapers } from './wallpapers';
 import { parseInputIcons, parseInputNames, parseInputVisibility, parseLaunchers } from './inputs';
 import { validAppId } from './catalog';
-import { validIconOverride } from './icnl';
+import { parseIconRef, validIconOverride } from './icnl';
 
 export const languages: readonly Language[] = ['en', 'de', 'zh', 'es'];
 
@@ -62,9 +62,11 @@ export function parsePreferences(raw: string | null): Preferences {
       favorites: !Array.isArray(value.favorites) ? null : ids(value.favorites),
       hidden: ids(value.hidden),
       recent: ids(value.recent).slice(0, 12),
-      wallpaper: wallpapers.some((wallpaper) => wallpaper.id === value.wallpaper)
-        ? value.wallpaper
-        : 'dunes',
+      wallpaper:
+        wallpapers.some((wallpaper) => wallpaper.id === value.wallpaper) ||
+        parseIconRef(value.wallpaper) !== null
+          ? value.wallpaper
+          : 'dunes',
       reducedMotion: value.reducedMotion === true,
       clock24: value.clock24 === true,
       showHomeAppNames: value.showHomeAppNames === true,

@@ -20,6 +20,7 @@ import {
 } from './input-settings';
 import {
   AppIconPicker,
+  builtinIconOptions,
   IconOptionList,
   IconSettings,
   PackDetail,
@@ -43,7 +44,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { wallpapers, wallpaperThumbnail } from '../wallpapers';
 import { useTranslation, wallpaperLabel } from '../i18n';
 import { getInputVisibility, inputHeading, newLauncherId } from '../inputs';
-import { findIcon } from '../icnl';
+import { findIcon, wallpaperRef } from '../icnl';
 
 const languageOptions = [
   ['en', 'english'],
@@ -165,6 +166,29 @@ export function Settings({
                   ? t(subpageTitles[subpage])
                   : '';
   const [subpageReturnFocus, setSubpageReturnFocus] = useState('setting-language');
+  // Built-in backgrounds first, then every pack wallpaper (image or CSS gradient).
+  const wallpaperOptions = [
+    ...wallpapers.map((wallpaper) => ({
+      id: wallpaper.id as string,
+      title: wallpaper.title,
+      image: wallpaperThumbnail(wallpaper.image),
+      css: false,
+    })),
+    ...packs.packs.flatMap((pack) =>
+      pack.wallpapers.map((wallpaper) => {
+        const ref = wallpaperRef(pack.id, wallpaper.meta.slug);
+        return {
+          id: ref,
+          title: wallpaper.meta.title,
+          image: wallpaper.type ? (packs.wallpaperUrls.get(ref) ?? '') : '',
+          css: !wallpaper.type,
+        };
+      }),
+    ),
+  ];
+  const currentWallpaper = wallpaperOptions.some((option) => option.id === preferences.wallpaper)
+    ? preferences.wallpaper
+    : wallpaperOptions[0].id;
   const updateLauncher = (id: string, patch: Partial<Launcher>) =>
     onUpdate({
       launchers: preferences.launchers.map((item) =>
@@ -174,7 +198,9 @@ export function Settings({
   const packIconTitle = (icon: ResolvedIcon | undefined, fallback: string) =>
     icon?.source === 'pack'
       ? (findIcon(packs.packs, icon.ref)?.icon.meta.title ?? fallback)
-      : fallback;
+      : icon?.source === 'builtin'
+        ? (builtinIconOptions(t, [icon.name])[0]?.label ?? fallback)
+        : fallback;
   const chooseLanguage = (next: Language) => {
     onUpdate({ language: next });
     setSubpage(null);
@@ -300,7 +326,7 @@ export function Settings({
   };
   const sectionFirst = {
     interface: 'setting-home-app-names',
-    background: `wallpaper-${preferences.wallpaper}`,
+    background: `wallpaper-${currentWallpaper}`,
     weather: 'setting-show-weather',
     inputs: inputs[0] ? `setting-input-${inputs[0].id}` : 'setting-inputs-refresh',
     icons: packs.packs[0] ? `setting-pack-${packs.packs[0].id}` : 'setting-icons-usb',
@@ -379,34 +405,34 @@ export function Settings({
           {!subpage && section === 'background' ? (
             <section className="settings-content" aria-label={t('background')}>
               <div className="wallpaper-options">
-                {wallpapers.map((wallpaper, index) => (
+                {wallpaperOptions.map((option, index) => (
                   <button
-                    key={wallpaper.id}
-                    className={`wallpaper-option${preferences.wallpaper === wallpaper.id ? ' selected' : ''}`}
-                    data-focusable={`wallpaper-${wallpaper.id}`}
+                    key={option.id}
+                    className={`wallpaper-option${preferences.wallpaper === option.id ? ' selected' : ''}`}
+                    data-focusable={`wallpaper-${option.id}`}
                     data-focus-left={
                       index % galleryColumns === 0
                         ? 'settings-section-background'
-                        : `wallpaper-${wallpapers[index - 1].id}`
+                        : `wallpaper-${wallpaperOptions[index - 1].id}`
                     }
-                    data-focus-right={`wallpaper-${(wallpapers[index + 1] ?? wallpaper).id}`}
-                    aria-pressed={preferences.wallpaper === wallpaper.id}
-                    onClick={() => onUpdate({ wallpaper: wallpaper.id })}
+                    data-focus-right={`wallpaper-${(wallpaperOptions[index + 1] ?? option).id}`}
+                    aria-pressed={preferences.wallpaper === option.id}
+                    onClick={() => onUpdate({ wallpaper: option.id })}
                   >
-                    <span className="wallpaper-thumbnail">
-                      <img
-                        src={wallpaperThumbnail(wallpaper.image)}
-                        alt=""
-                        draggable={false}
-                        decoding="async"
-                      />
-                      {preferences.wallpaper === wallpaper.id ? (
+                    <span
+                      className="wallpaper-thumbnail"
+                      data-wallpaper={option.css ? option.id : undefined}
+                    >
+                      {option.image ? (
+                        <img src={option.image} alt="" draggable={false} decoding="async" />
+                      ) : null}
+                      {preferences.wallpaper === option.id ? (
                         <span className="wallpaper-check">
                           <Check size={18} />
                         </span>
                       ) : null}
                     </span>
-                    <span>{wallpaperLabel(language, wallpaper.id, wallpaper.title)}</span>
+                    <span>{wallpaperLabel(language, option.id, option.title)}</span>
                   </button>
                 ))}
               </div>
@@ -810,6 +836,7 @@ export function Settings({
                   label={t('inputIcon')}
                   options={[
                     { id: 'auto', label: t('iconAuto') },
+                    ...builtinIconOptions(t),
                     ...packIconOptions(packs.packs, packs.urls, ['glyph', 'tile']),
                   ]}
                   selected={preferences.inputIcons[selectedInput.id] ?? 'auto'}
@@ -824,6 +851,8 @@ export function Settings({
               ) : subpage === 'launcher' && selectedLauncher && selectedLauncherCard ? (
                 <LauncherDetail
                   launcher={selectedLauncherCard}
+                  placement={selectedLauncher.placement}
+                  onPlacement={(placement) => updateLauncher(selectedLauncher.id, { placement })}
                   visibility={
                     getInputVisibility(selectedLauncher.id, preferences.inputVisibility) === 'off'
                       ? 'off'
@@ -879,6 +908,7 @@ export function Settings({
                   label={t('inputIcon')}
                   options={[
                     { id: 'default', label: t('iconDefault') },
+                    ...builtinIconOptions(t),
                     ...packIconOptions(packs.packs, packs.urls, ['glyph', 'tile']),
                   ]}
                   selected={selectedLauncher.icon || 'default'}
@@ -905,6 +935,7 @@ export function Settings({
                       title: target.title,
                       icon: '',
                       target: target.id,
+                      placement: 'inputs',
                     };
                     onUpdate({ launchers: [...preferences.launchers, launcher] });
                     onNotify(t('launcherAdded', { name: launcher.title }));

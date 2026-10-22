@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import {
   applyInputNames,
   inputHeading,
+  launcherApps,
   launcherInputs,
+  validBuiltinIcon,
+  validIconChoice,
   newLauncherId,
   validLauncherId,
   visibleInputs,
@@ -38,15 +41,13 @@ test('input names, icons and launchers survive storage only when valid', () => {
   );
   assert.deepEqual(preferences.inputNames, { 'com.webos.app.hdmi1': 'Switch 2' });
   assert.deepEqual(preferences.inputIcons, { 'com.webos.app.hdmi1': 'pack/switch' });
-  assert.deepEqual(preferences.launchers, [
-    { id: 'launcher-abc123', title: 'AirPlay', icon: 'pack/airplay', target: 'airplay' },
-    {
-      id: 'launcher-def456',
-      title: 'com.webos.app.miracast',
-      icon: '',
-      target: 'com.webos.app.miracast',
-    },
-  ]);
+  assert.deepEqual(
+    preferences.launchers.map((l) => [l.id, l.title, l.icon, l.target, l.placement]),
+    [
+      ['launcher-abc123', 'AirPlay', 'pack/airplay', 'airplay', 'inputs'],
+      ['launcher-def456', 'com.webos.app.miracast', '', 'com.webos.app.miracast', 'inputs'],
+    ],
+  );
   assert.deepEqual(parsePreferences(JSON.stringify({ version: 1 })).launchers, []);
   assert.ok(validLauncherId(newLauncherId()));
 });
@@ -66,8 +67,20 @@ test('custom names replace the TV label and re-guess the device kind', () => {
 
 test('launchers become Home cards that open their target and hide only when switched off', () => {
   const launchers = [
-    { id: 'launcher-aaaaaa', title: 'AirPlay', icon: '', target: 'airplay' },
-    { id: 'launcher-bbbbbb', title: 'Mirror', icon: '', target: 'com.webos.app.miracast' },
+    {
+      id: 'launcher-aaaaaa',
+      title: 'AirPlay',
+      icon: '',
+      target: 'airplay',
+      placement: 'inputs' as const,
+    },
+    {
+      id: 'launcher-bbbbbb',
+      title: 'Mirror',
+      icon: '',
+      target: 'com.webos.app.miracast',
+      placement: 'inputs' as const,
+    },
   ];
   const cards = launcherInputs(launchers, [{ id: 'airplay', title: 'AirPlay on LG' }]);
   assert.deepEqual(
@@ -130,5 +143,60 @@ test('input icons come from the user choice or a pack entry listing the input', 
     resolveInputIcon('com.webos.app.hdmi1', [pack], { 'com.webos.app.hdmi1': 'glyphs/missing' })
       ?.icon.meta.slug,
     'switch',
+  );
+});
+
+test('built-in symbols are valid icon choices and launchers can live in the app library', () => {
+  assert.ok(validBuiltinIcon('builtin:console'));
+  assert.ok(!validBuiltinIcon('builtin:nope'));
+  assert.ok(validIconChoice('pack/slug'));
+  assert.ok(validIconChoice('builtin:airplay'));
+  assert.ok(!validIconChoice('tv'));
+  const parsed = parsePreferences(
+    JSON.stringify({
+      version: 1,
+      inputIcons: { 'com.webos.app.hdmi1': 'builtin:apple-tv', 'com.webos.app.hdmi2': 'builtin:x' },
+      launchers: [
+        {
+          id: 'launcher-apps01',
+          title: 'AirPlay',
+          icon: 'builtin:airplay',
+          target: 'airplay',
+          placement: 'apps',
+        },
+        {
+          id: 'launcher-card01',
+          title: 'Mirror',
+          icon: '',
+          target: 'com.webos.app.miracast',
+          placement: 'weird',
+        },
+      ],
+    }),
+  );
+  assert.deepEqual(parsed.inputIcons, { 'com.webos.app.hdmi1': 'builtin:apple-tv' });
+  assert.deepEqual(
+    parsed.launchers.map((launcher) => [launcher.id, launcher.icon, launcher.placement]),
+    [
+      ['launcher-apps01', 'builtin:airplay', 'apps'],
+      ['launcher-card01', '', 'inputs'],
+    ],
+  );
+  const targets = [{ id: 'airplay', title: 'AirPlay on LG' }];
+  assert.deepEqual(launcherApps(parsed.launchers, targets), [
+    {
+      id: 'launcher-apps01',
+      title: 'AirPlay',
+      category: 'Utilities',
+      brand: 'launcher',
+      target: 'airplay',
+    },
+  ]);
+  assert.deepEqual(
+    launcherInputs(parsed.launchers, targets).map((card) => [card.id, card.placement]),
+    [
+      ['launcher-apps01', 'apps'],
+      ['launcher-card01', 'inputs'],
+    ],
   );
 });
