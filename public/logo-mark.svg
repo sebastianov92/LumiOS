@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 128 128">
+  <!-- Generator: Adobe Illustrator 30.8.2, SVG Export Plug-In . SVG Version: 2.1.4 Build 7)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+      }
+
+      .st1 {
+        fill: #191919;
+      }
+    </style>
+    <clipPath id="clippath">
+      <rect class="st0" width="128" height="128"/>
+    </clipPath>
+  </defs>
+  <path class="st1" d="M77.18,39.57c0,6.21-5.04,11.25-11.25,11.25,6.21,0,11.25,5.04,11.25,11.25,0-6.21,5.04-11.25,11.25-11.25-6.21,0-11.25-5.04-11.25-11.25Z"/>
+  <path class="st1" d="M96.27,69.91c-17.57,17.57-40.37,23.27-50.91,12.73-10.54-10.54-4.85-33.34,12.73-50.91l.41-.41c4.59-4.52,1.38-12.32-5.06-12.32h-10.54c-13.2,0-23.9,10.7-23.9,23.9v42.21c0,13.2,10.7,23.9,23.9,23.9h42.21c13.2,0,23.9-10.7,23.9-23.9v-10.54c0-6.44-7.8-9.64-12.32-5.06-.13.14-.27.27-.41.41h0Z"/>
+</svg>

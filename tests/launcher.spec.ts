@@ -938,7 +938,7 @@ test('the packaged file app loads offline with CSP, local fonts, no module fetch
         }),
       ),
     );
-  expect(backgroundThumbnails).toHaveLength(9);
+  expect(backgroundThumbnails).toHaveLength(10);
   const photos = backgroundThumbnails.filter((image) => image.src.endsWith('.jpg'));
   expect(photos).toHaveLength(6);
   for (const photo of photos) {

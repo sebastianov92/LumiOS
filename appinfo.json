@@ -13,6 +13,6 @@
   "requiredACG": ["application.launcher", "application.query", "lunabus.query"],
   "disableBackHistoryAPI": true,
   "handlesRelaunch": false,
-  "iconColor": "#25272d",
+  "iconColor": "#e4f280",
   "accessibility": { "supportsAudioGuidance": true }
 }

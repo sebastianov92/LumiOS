@@ -1,3 +1,5 @@
+<p align="center"><img src="public/app-icon.svg" width="128" alt="LumiOS"></p>
+
 # LumiOS
 
 Launcher moderno, pensado para el control remoto, para TVs LG con webOS rooteado. Fork de [lg-luma](https://github.com/ecklf/lg-luma) (MIT) con marca y rumbo propios de Dezik.
