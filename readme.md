@@ -33,7 +33,7 @@ Genera el paquete y cópialo a la TV (reemplaza `TV_IP`):
 
 ```sh
 pnpm run package
-scp -O dist/com.dezik.lumios_1.2.3_all.ipk root@TV_IP:/tmp/lumios.ipk
+scp -O dist/com.dezik.lumios_1.2.4_all.ipk root@TV_IP:/tmp/lumios.ipk
 ssh root@TV_IP
 ```
 

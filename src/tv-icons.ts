@@ -11,8 +11,13 @@ export const ICON_BATCH_BYTES = 256 * 1024;
 export const ICON_SINGLE_BYTES = 512 * 1024;
 const SIZE_QUERY_PATHS = 60;
 export const FALLBACK_COLOR = 'rgb(20, 20, 20)';
-// Tiles that show an app's own TV icon sit on the same near-black as the Netflix brand tile.
+// LG system apps whose icons look wrong on a sampled colour; they sit on the brand-tile black.
 export const TV_TILE_COLOR = '#141414';
+export const darkTileApps = new Set([
+  'com.webos.app.discovery',
+  'com.webos.app.homeconnect',
+  'com.webos.app.mediadiscovery',
+]);
 
 export interface IconRecord {
   id: string;
@@ -141,6 +146,26 @@ export function dominantColor(
   return `rgb(${best.sum.map((value) => Math.round(value / best.n)).join(', ')})`;
 }
 
+async function analyzeColor(blob: Blob): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(blob, {
+      resizeWidth: 48,
+      resizeHeight: 48,
+      resizeQuality: 'low',
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = 48;
+    canvas.height = 48;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return FALLBACK_COLOR;
+    context.drawImage(bitmap, 0, 0, 48, 48);
+    bitmap.close();
+    return dominantColor(context.getImageData(0, 0, 48, 48).data, 48, 48);
+  } catch {
+    return FALLBACK_COLOR;
+  }
+}
+
 const acceptRecord = (record: unknown): record is IconRecord =>
   !!record &&
   typeof record === 'object' &&
@@ -190,6 +215,15 @@ export async function syncTVIcons(
   const cached = db ? await readAll(db) : [];
   if (signal.cancelled) return;
   const fresh = cached.filter((record) => wanted.get(record.id) === record.path);
+  // Records written while every tile was black carry the constant instead of a sampled colour;
+  // sample them again from the cached bytes without touching the TV.
+  const repaired: IconRecord[] = [];
+  for (const record of fresh)
+    if (record.type && record.color === TV_TILE_COLOR) {
+      record.color = await analyzeColor(new Blob([record.bytes], { type: record.type }));
+      repaired.push(record);
+    }
+  if (db && repaired.length) await write(db, repaired, []);
   const stale = cached
     .filter((record) => wanted.get(record.id) !== record.path)
     .map((record) => record.id);
@@ -241,8 +275,7 @@ export async function syncTVIcons(
       // Copy into a standalone ArrayBuffer so IndexedDB stores the icon alone, not the batch.
       const buffer = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(buffer).set(bytes);
-      // Tile colour is a constant now (see TV_TILE_COLOR); the field stays for cached records.
-      const color = TV_TILE_COLOR;
+      const color = await analyzeColor(new Blob([buffer], { type }));
       for (const id of ids)
         records.push({ id, path, size: bytes.byteLength, type, bytes: buffer, color });
     }
