@@ -117,6 +117,8 @@ Implementado: `inputNames`, `inputIcons`, `launchers` en preferencias; `src/inpu
 
 ## F4 — Precarga: LumiOS siempre listo — HECHA 2026-10-22 (pendiente de prueba en TV)
 
+2026-10-23: `enable` además apaga `homeAutoLaunch` de LG y deja un vigilante de `tvpower/getPowerState` que relanza LumiOS al volver de reposo (Quick Start+ no ejecuta los hooks de arranque); `status` y `tests/autostart.test.ts`.
+
 Implementado: `tv/autostart.sh` con modos `enable` (visible + keepAlive) y `enable preload` (oculto + preload full), tecla Home con keepAlive en README; `tv/preload.js` (Node de la TV) con `status|enable|disable|apply` sobre configd + backup + reaplicación al arrancar; `src/preload.ts` + Ajustes → General → Precarga del sistema. Verificado en escritorio con mock; la TV decide.
 
 Verificado en el código de SAM/WAM (webOS OSE) y en AltHome:

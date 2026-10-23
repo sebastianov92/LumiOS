@@ -33,7 +33,7 @@ Genera el paquete y cópialo a la TV (reemplaza `TV_IP`):
 
 ```sh
 pnpm run package
-scp -O dist/com.dezik.lumios_1.2.4_all.ipk root@TV_IP:/tmp/lumios.ipk
+scp -O dist/com.dezik.lumios_1.3.0_all.ipk root@TV_IP:/tmp/lumios.ipk
 ssh root@TV_IP
 ```
 
@@ -80,7 +80,7 @@ Los packs viven en `/media/developer/lumios/packs/` de la TV. Tres formas de lle
 
 Los packs también pueden traer **fondos** para Ajustes → Fondo: una imagen por fondo en `wallpapers/<slug>/image.jpg` (o png/webp, hasta 8 MB), declarada en `pack.json` bajo `wallpapers`.
 
-## Opcional: abrir al arrancar y mantener en memoria
+## Opcional: abrir al encender la TV
 
 Tras probar la app instalada, en la shell root de la TV:
 
@@ -88,13 +88,26 @@ Tras probar la app instalada, en la shell root de la TV:
 sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh enable
 ```
 
-Instala un hook en `/var/lib/webosbrew/init.d/65-lumios` que lanza LumiOS tras un arranque completo con `keepAlive`: al abrir otra app LumiOS queda oculto en memoria en vez de cerrarse, y volver es instantáneo. Si prefieres arrancar en el Home de LG y tener LumiOS listo para la tecla Home:
+Hace tres cosas:
+
+- Instala un hook en `/var/lib/webosbrew/init.d/65-lumios` que lanza LumiOS tras un arranque completo con `keepAlive`: al abrir otra app LumiOS queda oculto en memoria en vez de cerrarse, y volver es instantáneo.
+- Deja corriendo un vigilante del estado de energía. Con Quick Start+ la TV no rearranca al encenderla (vuelve de reposo sin ejecutar los hooks), así que el vigilante trae LumiOS al frente en cuanto la TV despierta, unos 2 s después de encender.
+- Apaga **Home Auto Launch** de LG (Ajustes → General → Sistema → Ajustes adicionales → Ajustes de Home), que si no abriría el Home de LG encima de LumiOS. `disable` deja el ajuste como estaba.
+
+Estado y registro:
+
+```sh
+sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh status
+cat /tmp/lumios-resume.log
+```
+
+Si prefieres arrancar en el Home de LG y tener LumiOS listo para la tecla Home:
 
 ```sh
 sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh enable preload
 ```
 
-Así se carga oculto al encender (`preload: full`) y la primera pulsación solo lo muestra. Para quitarlo antes de desinstalar:
+Así se carga oculto al encender (`preload: full`) y la primera pulsación solo lo muestra; en este modo no hay vigilante y Home Auto Launch no se toca. Para quitarlo todo antes de desinstalar:
 
 ```sh
 sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh disable
