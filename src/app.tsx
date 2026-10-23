@@ -934,8 +934,8 @@ function Launcher({
               )}
             </div>
             {page === 'settings' ? (
-              <span className="settings-version" aria-label="LumiOS version 1.2.2">
-                v1.2.2
+              <span className="settings-version" aria-label="LumiOS version 1.2.3">
+                v1.2.3
               </span>
             ) : null}
           </footer>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { isTV } from './bridge';
-import { syncTVIcons, type IconRecord } from './tv-icons';
+import { syncTVIcons, TV_TILE_COLOR, type IconRecord } from './tv-icons';
 import type { TVApp, TVIcon } from './types';
 
 // Resolves each app's own TV icon to an object URL plus a matching tile colour. Desktop previews
@@ -28,7 +28,7 @@ export function useTVIcons(apps: TVApp[]): Record<string, TVIcon> {
           }
           const url = URL.createObjectURL(new Blob([record.bytes], { type: record.type }));
           urls.current.set(record.id, { key, url });
-          next[record.id] = { url, color: record.color };
+          next[record.id] = { url, color: TV_TILE_COLOR };
         }
         return next;
       });

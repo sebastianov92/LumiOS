@@ -11,6 +11,8 @@ export const ICON_BATCH_BYTES = 256 * 1024;
 export const ICON_SINGLE_BYTES = 512 * 1024;
 const SIZE_QUERY_PATHS = 60;
 export const FALLBACK_COLOR = 'rgb(20, 20, 20)';
+// Tiles that show an app's own TV icon sit on the same near-black as the Netflix brand tile.
+export const TV_TILE_COLOR = '#141414';
 
 export interface IconRecord {
   id: string;
@@ -139,26 +141,6 @@ export function dominantColor(
   return `rgb(${best.sum.map((value) => Math.round(value / best.n)).join(', ')})`;
 }
 
-async function analyzeColor(blob: Blob): Promise<string> {
-  try {
-    const bitmap = await createImageBitmap(blob, {
-      resizeWidth: 48,
-      resizeHeight: 48,
-      resizeQuality: 'low',
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = 48;
-    canvas.height = 48;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) return FALLBACK_COLOR;
-    context.drawImage(bitmap, 0, 0, 48, 48);
-    bitmap.close();
-    return dominantColor(context.getImageData(0, 0, 48, 48).data, 48, 48);
-  } catch {
-    return FALLBACK_COLOR;
-  }
-}
-
 const acceptRecord = (record: unknown): record is IconRecord =>
   !!record &&
   typeof record === 'object' &&
@@ -259,7 +241,8 @@ export async function syncTVIcons(
       // Copy into a standalone ArrayBuffer so IndexedDB stores the icon alone, not the batch.
       const buffer = new ArrayBuffer(bytes.byteLength);
       new Uint8Array(buffer).set(bytes);
-      const color = await analyzeColor(new Blob([buffer], { type }));
+      // Tile colour is a constant now (see TV_TILE_COLOR); the field stays for cached records.
+      const color = TV_TILE_COLOR;
       for (const id of ids)
         records.push({ id, path, size: bytes.byteLength, type, bytes: buffer, color });
     }

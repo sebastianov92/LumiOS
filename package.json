@@ -1,6 +1,6 @@
 {
   "name": "lumios",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "description": "LumiOS: a modern, remote-first launcher for LG webOS TVs (fork of lg-luma).",
   "license": "MIT",
