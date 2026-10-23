@@ -70,6 +70,7 @@ export function normalizeAndVerifyPackage(bytes, manifest) {
     manifest.largeIcon,
     'autostart.sh',
     'preload.js',
+    'splash.png',
     'fonts/inter-latin.woff2',
     'wallpapers/dunes.jpg',
     'wallpapers/midnight.svg',
