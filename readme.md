@@ -33,7 +33,7 @@ Genera el paquete y cópialo a la TV (reemplaza `TV_IP`):
 
 ```sh
 pnpm run package
-scp -O dist/com.dezik.lumios_1.2.1_all.ipk root@TV_IP:/tmp/lumios.ipk
+scp -O dist/com.dezik.lumios_1.2.2_all.ipk root@TV_IP:/tmp/lumios.ipk
 ssh root@TV_IP
 ```
 
@@ -99,6 +99,12 @@ Así se carga oculto al encender (`preload: full`) y la primera pulsación solo 
 ```sh
 sh /media/developer/apps/usr/palm/applications/com.dezik.lumios/autostart.sh disable
 ```
+
+## Atajos del control
+
+- **Rojo**: Inicio · **Verde**: Apps · **Amarillo**: Ajustes.
+- **OK mantenido** sobre una app: opciones (favorito, ocultar); en Inicio, mover favoritos.
+- **Atrás**: cierra menús y vuelve a Inicio.
 
 ## Opcional: botón Home del control
 

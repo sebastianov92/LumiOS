@@ -150,6 +150,11 @@ export async function launchApp(id: string, options: { verify?: boolean } = {}):
     const status = await nativeCall(`${manager}getAppLoadStatus`, { appId: id });
     if (status.exist !== true)
       throw new Error('This app is no longer installed. Refresh your library.');
+  } else {
+    // Launcher targets are often system apps (AirPlay, Screen Share…). Verified on webOS 24:
+    // the public bus answers returnValue true without showing them, the private bus does.
+    const reply = await rootLaunch(id).catch(() => null);
+    if (reply?.returnValue === true) return;
   }
   try {
     // Public API + declared ACGs, rather than rewriting any system permissions.

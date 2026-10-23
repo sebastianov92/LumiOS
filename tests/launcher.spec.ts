@@ -2032,3 +2032,18 @@ test('the desktop preview loads the example packs when the URL carries ?packs', 
     'luma-brands/netflix',
   );
 });
+
+test('the remote colour keys jump between Home, Apps and Settings', async ({ page }) => {
+  await page.goto('/');
+  const press = (keyCode: number) =>
+    page.locator('body').dispatchEvent('keydown', { key: 'Unidentified', keyCode, bubbles: true });
+  await press(404);
+  await expect(page.locator('main')).toHaveClass(/page-apps/);
+  await expect(page.locator('.library-grid [data-app-id]').first()).toBeFocused();
+  await press(405);
+  await expect(page.locator('main')).toHaveClass(/page-settings/);
+  await expect(page.locator('[data-focusable="settings-section-interface"]')).toBeFocused();
+  await press(403);
+  await expect(page.locator('main')).toHaveClass(/page-home/);
+  await expect(page.locator('.favorites-grid [data-app-id]').first()).toBeFocused();
+});

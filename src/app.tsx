@@ -42,6 +42,8 @@ import type { Category, Inventory, Page, Preferences, ResolvedIcon, TVApp, TVInp
 import { categoryLabel, LanguageProvider, useTranslation } from './i18n';
 
 const categories: Category[] = ['Streaming', 'Music', 'Gaming', 'Utilities'];
+// Magic Remote colour keys: red, green and yellow jump straight to a tab.
+const colorKeyPages: Record<number, Page> = { 403: 'home', 404: 'apps', 405: 'settings' };
 const focusFirstApp = () =>
   (
     document.querySelector<HTMLElement>('main [data-app-id]') ??
@@ -348,11 +350,13 @@ function Launcher({
     options: () => void;
     hold: () => void;
     reorder: (key: string) => boolean;
+    tab: (keyCode: number) => boolean;
   }>({
     back: () => {},
     options: () => {},
     hold: () => {},
     reorder: () => false,
+    tab: () => false,
   });
   useLayoutEffect(() => {
     actions.current = {
@@ -410,6 +414,20 @@ function Launcher({
           shiftFavorite(reordering, key === 'ArrowLeft' ? -1 : 1);
         return true;
       },
+      tab: (keyCode) => {
+        const target = colorKeyPages[keyCode];
+        if (!target) return false;
+        setOptionsApp(null);
+        openPage(target);
+        requestAnimationFrame(() => {
+          if (target === 'settings')
+            document
+              .querySelector<HTMLElement>('[data-focusable="settings-section-interface"]')
+              ?.focus({ preventScroll: true });
+          else focusFirstApp();
+        });
+        return true;
+      },
     };
   });
 
@@ -435,6 +453,10 @@ function Launcher({
         return;
       }
       if (actions.current.reorder(event.key)) {
+        event.preventDefault();
+        return;
+      }
+      if (actions.current.tab(event.keyCode)) {
         event.preventDefault();
         return;
       }
@@ -912,8 +934,8 @@ function Launcher({
               )}
             </div>
             {page === 'settings' ? (
-              <span className="settings-version" aria-label="LumiOS version 1.2.1">
-                v1.2.1
+              <span className="settings-version" aria-label="LumiOS version 1.2.2">
+                v1.2.2
               </span>
             ) : null}
           </footer>
