@@ -141,14 +141,42 @@ export async function loadInventory(): Promise<Inventory> {
   };
 }
 
-export async function launchApp(id: string): Promise<void> {
+// Public launch first; system apps the public bus refuses (AirPlay, Screen Share…) are retried
+// on the private bus through Homebrew Channel's root shell. Failures keep the TV's own text.
+export async function launchApp(id: string, options: { verify?: boolean } = {}): Promise<void> {
   if (!validAppId(id)) throw new Error('This app has an invalid identifier.');
   if (!isTV()) return;
-  const status = await nativeCall(`${manager}getAppLoadStatus`, { appId: id });
-  if (status.exist !== true)
-    throw new Error('This app is no longer installed. Refresh your library.');
-  // Public API + declared ACGs, rather than rewriting any system permissions.
-  await nativeCall(`${manager}launch`, { id });
+  if (options.verify !== false) {
+    const status = await nativeCall(`${manager}getAppLoadStatus`, { appId: id });
+    if (status.exist !== true)
+      throw new Error('This app is no longer installed. Refresh your library.');
+  }
+  try {
+    // Public API + declared ACGs, rather than rewriting any system permissions.
+    await nativeCall(`${manager}launch`, { id });
+  } catch (error) {
+    const reply = await rootLaunch(id).catch(() => null);
+    if (reply?.returnValue === true) return;
+    const detail = typeof reply?.errorText === 'string' ? ` ${reply.errorText.slice(0, 160)}` : '';
+    throw new Error(
+      `${error instanceof Error ? error.message : 'The TV refused to open this app.'}${detail}`,
+    );
+  }
+}
+
+// webOS 10+ root-shell launches need -t; the id is already validated for the shell.
+const rootLaunchCommand = (id: string) =>
+  `case "$(cat /etc/starfish-release 2>/dev/null)" in *" 10."*|*" 11."*) FLAG=-t ;; *) FLAG=-n ;; esac; /usr/bin/luna-send "$FLAG" 1 -w 5000 luna://com.webos.service.applicationmanager/launch '{"id":"${id}"}'`;
+
+async function rootLaunch(id: string): Promise<Record<string, unknown> | null> {
+  const text = new TextDecoder().decode(await execBytes(rootLaunchCommand(id), 8000));
+  const line = text
+    .trim()
+    .split('\n')
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith('{'))
+    .pop();
+  return line ? (JSON.parse(line) as Record<string, unknown>) : null;
 }
 
 export function platformBack(): void {

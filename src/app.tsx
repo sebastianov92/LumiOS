@@ -108,7 +108,9 @@ function Launcher({
           source: 'pack',
           packName: hit.pack.name,
         });
-      else if (tv)
+      // Built-in brand tiles keep their artwork; the TV's own icon fills in for apps without a
+      // brand, or whenever the user picked "TV icon" for an app.
+      else if (tv && (app.brand === 'generic' || preferences.iconOverrides[app.id] === 'tv'))
         map.set(app.id, { icon: { source: 'tv', url: tv.url, color: tv.color }, source: 'tv' });
       else map.set(app.id, { source: app.brand === 'generic' ? 'generic' : 'builtin' });
     }
@@ -302,7 +304,9 @@ function Launcher({
       pendingLaunch.current = true;
       setLaunching(app.id);
       try {
-        await launchApp('target' in app && app.target ? app.target : app.id);
+        const target = 'target' in app && app.target ? app.target : undefined;
+        // Launcher targets include system apps that getAppLoadStatus does not report.
+        await launchApp(target ?? app.id, { verify: !target });
         if (!('port' in app))
           setPreferences((current) => ({
             ...current,
@@ -908,8 +912,8 @@ function Launcher({
               )}
             </div>
             {page === 'settings' ? (
-              <span className="settings-version" aria-label="LumiOS version 1.2.0">
-                v1.2.0
+              <span className="settings-version" aria-label="LumiOS version 1.2.1">
+                v1.2.1
               </span>
             ) : null}
           </footer>

@@ -1582,8 +1582,8 @@ button svg {
   height: 100%;
 }
 .brand-installed-icon {
-  width: 68%;
-  height: 68%;
+  width: 100%;
+  height: 90%;
   object-fit: contain;
   border-radius: 0;
 }
