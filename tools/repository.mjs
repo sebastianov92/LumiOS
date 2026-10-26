@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { buildFeed } from './feed.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(await fs.readFile(path.join(root, 'appinfo.json'), 'utf8'));
@@ -22,33 +23,34 @@ const filename = `${manifest.id}_${manifest.version}_all.ipk`;
 const output = path.join(root, 'dist');
 const bytes = await fs.readFile(path.join(output, filename));
 const iconUri = `${releaseUrl}/${manifest.largeIcon}`;
-const feed = {
-  paging: { page: 1, count: 1, maxPage: 1, itemsTotal: 1 },
-  packages: [
-    {
+const extras = JSON.parse(await fs.readFile(path.join(root, 'tools', 'feed-extras.json'), 'utf8'));
+const feed = buildFeed(
+  {
+    id: manifest.id,
+    title: manifest.title,
+    iconUri,
+    manifest: {
       id: manifest.id,
+      version: manifest.version,
+      type: manifest.type,
       title: manifest.title,
+      appDescription: manifest.appDescription,
       iconUri,
-      manifest: {
-        id: manifest.id,
-        version: manifest.version,
-        type: manifest.type,
-        title: manifest.title,
-        appDescription: manifest.appDescription,
-        iconUri,
-        sourceUrl,
-        rootRequired: true,
-        ipkUrl: `${releaseUrl}/${filename}`,
-        ipkHash: { sha256: createHash('sha256').update(bytes).digest('hex') },
-        ipkSize: bytes.length,
-      },
+      sourceUrl,
+      rootRequired: true,
+      ipkUrl: `${releaseUrl}/${filename}`,
+      ipkHash: { sha256: createHash('sha256').update(bytes).digest('hex') },
+      ipkSize: bytes.length,
     },
-  ],
-};
+  },
+  extras,
+);
 await fs.copyFile(
   path.join(output, 'app', manifest.largeIcon),
   path.join(output, manifest.largeIcon),
 );
 await fs.writeFile(path.join(output, 'repo.json'), JSON.stringify(feed, null, 2) + '\n');
 if (process.env.GITHUB_OUTPUT) await fs.appendFile(process.env.GITHUB_OUTPUT, `tag=${tag}\n`);
-console.log(`Homebrew feed: dist/repo.json (${tag}, ${bytes.length} byte IPK)`);
+console.log(
+  `Homebrew feed: dist/repo.json (${tag}, ${bytes.length} byte IPK, ${feed.packages.length} apps)`,
+);
